@@ -3016,7 +3016,7 @@ bool AcceptBlockHeader(const CBlock& block, CValidationState& state, CBlockIndex
     return true;
 }
 
-static bool AcceptBlock(const CBlock& block, CValidationState& state, CBlockIndex** ppindex, CDiskBlockPos* dbp = nullptr, bool fAlreadyCheckedBlock = false)
+static bool AcceptBlock(const CBlock& block, CValidationState& state, CBlockIndex** ppindex, const CDiskBlockPos* dbp = nullptr, bool fAlreadyCheckedBlock = false)
 {
     AssertLockHeld(cs_main);
 
@@ -3328,7 +3328,7 @@ void CBlockIndex::BuildSkip()
         pskip = pprev->GetAncestor(GetSkipHeight(nHeight));
 }
 
-bool ProcessNewBlock(CValidationState& state, CNode* pfrom, const CBlock* pblock, CDiskBlockPos* dbp, bool* fAccepted)
+bool ProcessNewBlock(CValidationState& state, CNode* pfrom, const CBlock* pblock, const CDiskBlockPos* dbp, bool* fAccepted)
 {
     AssertLockNotHeld(cs_main);
 
