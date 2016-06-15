@@ -3096,7 +3096,6 @@ bool ActivateBestChain(CValidationState& state, const CBlock* pblock, bool fAlre
                             if (chainActive.Height() > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : nBlockEstimate)) {
                                 pnode->PushInventory(CInv(MSG_BLOCK, hashNewTip));
                             }
-                            return true;
                         });
                     }
                 }
@@ -4974,7 +4973,6 @@ static void RelayTransaction(const CTransaction& tx, CConnman& connman)
     connman.ForEachNode([&inv](CNode* pnode)
     {
         pnode->PushInventory(inv);
-        return true;
     });
 }
 
@@ -4996,7 +4994,6 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman& connma
             uint64_t hashKey = CSipHasher(hasher).Write(pnode->id).Finalize();
             mapMix.emplace(hashKey, pnode);
         }
-        return true;
     };
 
     auto pushfunc = [&addr, &mapMix, &nRelayNodes] {
