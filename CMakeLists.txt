@@ -408,7 +408,7 @@ set(COMMON_SOURCES
         ./src/script/script_error.cpp
         ./src/spork.cpp
         ./src/sporkdb.cpp
-        ./src/support/pagelocker.cpp
+        ./src/support/lockedpool.cpp
         ./src/warnings.cpp
         )
 add_library(COMMON_A STATIC ${BitcoinHeaders} ${COMMON_SOURCES})
@@ -440,7 +440,7 @@ set(UTIL_SOURCES
         ./src/utilstrencodings.cpp
         ./src/utilmoneystr.cpp
         ./src/utiltime.cpp
-        ./src/support/pagelocker.cpp
+        ./src/support/lockedpool.cpp
         ./src/support/cleanse.cpp
         )
 add_library(UTIL_A STATIC ${BitcoinHeaders} ${UTIL_SOURCES})
