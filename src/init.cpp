@@ -191,6 +191,8 @@ void Interrupt()
     InterruptRPC();
     InterruptREST();
     InterruptTorControl();
+    if (g_connman)
+        g_connman->Interrupt();
 }
 
 /** Preparing steps before shutting down or restarting the wallet */
@@ -220,7 +222,6 @@ void PrepareShutdown()
     GenerateBitcoins(false, NULL, 0);
 #endif
     MapPort(false);
-    g_connman->Stop();
     g_connman.reset();
 
     DumpMasternodes();
@@ -2161,7 +2162,7 @@ bool AppInit2()
     connOptions.nSendBufferMaxSize = 1000*GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
     connOptions.nReceiveFloodSize = 1000*GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
 
-    if(!connman.Start(threadGroup, scheduler, strNodeError, connOptions))
+    if (!connman.Start(scheduler, strNodeError, connOptions))
         return UIError(strNodeError);
 
 #ifdef ENABLE_WALLET
