@@ -316,6 +316,10 @@ void PrepareShutdown()
         pEvoNotificationInterface = nullptr;
     }
 
+    if (fMasterNode) {
+        UnregisterValidationInterface(activeMasternodeManager);
+    }
+
 #if ENABLE_ZMQ
     if (pzmqNotificationInterface) {
         UnregisterValidationInterface(pzmqNotificationInterface);
@@ -1584,6 +1588,9 @@ bool AppInitMain()
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
+    const CChainParams& chainparams = Params();
+    const Consensus::Params& consensus = chainparams.GetConsensus();
+
     bool fLoaded = false;
     while (!fLoaded && !ShutdownRequested()) {
         bool fReset = fReindex;
@@ -1634,9 +1641,6 @@ bool AppInitMain()
                     strLoadError = strprintf("%s : %s", strLoadError, strBlockIndexError);
                     break;
                 }
-
-                const CChainParams& chainparams = Params();
-                const Consensus::Params& consensus = chainparams.GetConsensus();
 
                 // If the loaded chain has a wrong genesis, bail out immediately
                 // (we're likely using a testnet datadir, or the other way around).
@@ -1907,6 +1911,11 @@ bool AppInitMain()
 
     if (fMasterNode) {
         LogPrintf("IS MASTER NODE\n");
+
+        // init and register activeMasternodeManager
+        activeMasternodeManager = new CActiveDeterministicMasternodeManager();
+        RegisterValidationInterface(activeMasternodeManager);
+
         auto res = initMasternode(gArgs.GetArg("-masternodeprivkey", ""), gArgs.GetArg("-masternodeaddr", ""), true);
         if (!res) { return UIError(res.getError()); }
     }
@@ -1945,6 +1954,11 @@ bool AppInitMain()
         return false;
     }
 
+    if (fMasterNode) {
+        assert(activeMasternodeManager);
+        activeMasternodeManager->Init();
+    }
+
     // ********************************************************* Step 11: start node
 
     if (!strErrors.str().empty())
@@ -1953,6 +1967,7 @@ bool AppInitMain()
     //// debug print
     LogPrintf("mapBlockIndex.size() = %u\n", mapBlockIndex.size());
     LogPrintf("chainActive.Height() = %d\n", chainActive.Height());
+
 #ifdef ENABLE_WALLET
     {
         if (pwalletMain) {
