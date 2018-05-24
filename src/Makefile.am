@@ -537,6 +537,8 @@ libbitcoin_util_a_SOURCES = \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
   compat/strnlen.cpp \
+  crypto/bls_ies.cpp \
+  crypto/bls_ies.h \
   fs.cpp \
   interfaces/handler.cpp \
   logging.cpp \
