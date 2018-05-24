@@ -235,6 +235,11 @@ int GetNumCores();
 
 void SetThreadPriority(int nPriority);
 
+namespace ctpl {
+    class thread_pool;
+}
+void RenameThreadPool(ctpl::thread_pool& tp, const char* baseName);
+
 /**
  * .. and a wrapper that just calls func once
  */
