@@ -544,6 +544,8 @@ libbitcoin_util_a_SOURCES = \
   compat/strnlen.cpp \
   crypto/bls_ies.cpp \
   crypto/bls_ies.h \
+  crypto/bls_worker.cpp \
+  crypto/bls_worker.h \
   fs.cpp \
   interfaces/handler.cpp \
   logging.cpp \
