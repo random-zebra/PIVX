@@ -33,6 +33,8 @@ uint256 BuildSignHash(const T& s)
 
 std::string ToHexStr(const std::vector<bool>& vBits);
 
+void EnsureQuorumConnections(Consensus::LLMQType llmqType, const CBlockIndex *pindexQuorum, const uint256& myProTxHash);
+
 } // namespace llmq::utils
 
 } // namespace llmq

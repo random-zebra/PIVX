@@ -8,6 +8,7 @@
 #include "bls/bls_worker.h"
 #include "llmq/quorums_blockprocessor.h"
 #include "llmq/quorums_commitment.h"
+#include "llmq/quorums_dkgsessionmgr.h"
 
 
 namespace llmq
@@ -19,15 +20,13 @@ void InitLLMQSystem(CEvoDB& evoDb)
 {
     blsWorker = new CBLSWorker();
     quorumBlockProcessor.reset(new CQuorumBlockProcessor(evoDb));
-    /* !TODO
     quorumDKGSessionManager.reset(new CDKGSessionManager(evoDb, *blsWorker));
-    */
 }
 
 void DestroyLLMQSystem()
 {
     quorumBlockProcessor.reset();
-    //quorumDKGSessionManager.reset();
+    quorumDKGSessionManager.reset();
     delete blsWorker;
     blsWorker = nullptr;
 }

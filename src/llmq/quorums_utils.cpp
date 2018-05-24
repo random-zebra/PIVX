@@ -54,6 +54,65 @@ std::string ToHexStr(const std::vector<bool>& vBits)
     return HexStr(vBytes);
 }
 
+static std::set<uint256> GetQuorumConnections(Consensus::LLMQType llmqType, const CBlockIndex* pindexQuorum, const uint256& forMember)
+{
+    auto& params = Params().GetConsensus().llmqs.at(llmqType);
+
+    auto mns = GetAllQuorumMembers(llmqType, pindexQuorum);
+    std::set<uint256> result;
+
+    auto calcOutbound = [&](size_t i, const uint256 proTxHash) {
+        // Relay to nodes at indexes (i+2^k)%n, where
+        //   k: 0..max(1, floor(log2(n-1))-1)
+        //   n: size of the quorum/ring
+        std::set<uint256> r;
+        int gap = 1;
+        int gap_max = (int)mns.size() - 1;
+        int k = 0;
+        while ((gap_max >>= 1) || k <= 1) {
+            size_t idx = (i + gap) % mns.size();
+            auto& otherDmn = mns[idx];
+            if (otherDmn->proTxHash == proTxHash) {
+                continue;
+            }
+            r.emplace(otherDmn->proTxHash);
+            gap <<= 1;
+            k++;
+        }
+        return r;
+    };
+
+    for (size_t i = 0; i < mns.size(); i++) {
+        auto& dmn = mns[i];
+        auto r = calcOutbound(i, dmn->proTxHash);
+        if (dmn->proTxHash == forMember) {
+            result.insert(r.begin(), r.end());
+        } else if (r.count(forMember)) {
+            result.emplace(dmn->proTxHash);
+        }
+    }
+    return result;
+}
+
+void EnsureQuorumConnections(Consensus::LLMQType llmqType, const CBlockIndex *pindexQuorum, const uint256& myProTxHash)
+{
+    auto members = GetAllQuorumMembers(llmqType, pindexQuorum);
+    bool isMember = std::find_if(members.begin(), members.end(),
+            [&](const CDeterministicMNCPtr& dmn) { return dmn->proTxHash == myProTxHash; }) != members.end();
+
+    if (!isMember) {
+        return;
+    }
+
+    std::set<uint256> connections = GetQuorumConnections(llmqType, pindexQuorum, myProTxHash);
+    if (!connections.empty()) {
+        if (!g_connman->HasMasternodeQuorumNodes(llmqType, pindexQuorum->GetBlockHash())) {
+            LogPrint(BCLog::DKG, "%s: Adding %d quorum connections for %s\n", __func__, connections.size(), pindexQuorum->GetBlockHash().ToString());
+        }
+        g_connman->SetMasternodeQuorumNodes(llmqType, pindexQuorum->GetBlockHash(), connections);
+    }
+}
+
 } // namespace llmq::utils
 
 } // namespace llmq

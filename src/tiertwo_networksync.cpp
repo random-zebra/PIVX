@@ -5,6 +5,7 @@
 #include "masternode-sync.h"
 
 #include "llmq/quorums_blockprocessor.h"
+#include "llmq/quorums_dkgsessionmgr.h"
 #include "masternodeman.h"          // for mnodeman
 #include "netmessagemaker.h"
 #include "net_processing.h"         // for Misbehaving
@@ -57,8 +58,8 @@ bool CMasternodeSync::MessageDispatcher(CNode* pfrom, std::string& strCommand, C
         || strCommand == NetMsgType::QJUSTIFICATION
         || strCommand == NetMsgType::QPCOMMITMENT
         || strCommand == NetMsgType::QWATCH) {
-        // !TODO
-        return false;
+        llmq::quorumDKGSessionManager->ProcessMessage(pfrom, strCommand, vRecv);
+        return true;
     }
 
     if (strCommand == NetMsgType::GETMNLIST) {
