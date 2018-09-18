@@ -72,7 +72,7 @@ rust_crates := \
   crate_zcash_proofs
 
 rust_packages := rust $(rust_crates)
-packages:=boost openssl libevent gmp $(zcash_packages) libsodium
+packages:=boost openssl libevent gmp $(zcash_packages) libsodium chia_bls
 
 qt_native_packages = native_protobuf
 qt_packages = qrencode protobuf zlib
