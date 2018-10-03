@@ -22,6 +22,7 @@
 #include "checkpoints.h"
 #include "compat/sanity.h"
 #include "consensus/upgrades.h"
+#include "crypto/bls.h"
 #include "evo/evonotificationinterface.h"
 #include "fs.h"
 #include "httpserver.h"
@@ -763,11 +764,16 @@ bool InitSanityCheck(void)
         return false;
     }
 
-    if (!glibc_sanity_test() || !glibcxx_sanity_test())
+    if (!glibc_sanity_test() || !glibcxx_sanity_test()) {
         return false;
+    }
 
     if (!Random_SanityCheck()) {
         UIError(_("OS cryptographic RNG sanity check failure. Aborting."));
+        return false;
+    }
+
+    if (!BLSInit()) {
         return false;
     }
 
