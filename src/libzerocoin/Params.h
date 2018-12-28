@@ -225,6 +225,12 @@ public:
 	std::vector<CBN_matrix> ZKP_wB;
 	std::vector<CBN_matrix> ZKP_wC;
 	CBN_vector ZKP_K;
+
+	std::vector< std::vector<ConstraintsList> > ZKP_wA2;
+    std::vector< std::vector<ConstraintsList> > ZKP_wB2;
+    std::vector< std::vector<ConstraintsList> > ZKP_wC2;
+    CBN_vector ZKP_K2;
+
 	std::vector< std::vector< std::pair<int, CBigNum> > > S_POLY_A1, S_POLY_A2;
 	std::vector< std::vector< std::pair<int, CBigNum> > > S_POLY_B1, S_POLY_B2;
 	std::vector< std::vector< std::pair<int, CBigNum> > > S_POLY_C1, S_POLY_C2;

@@ -1,4 +1,5 @@
 #include "chainparams.h"
+#include "libzerocoin/AccumulatorMerkleTree.h"
 #include "libzerocoin/ArithmeticCircuit.h"
 #include "libzerocoin/PolynomialCommitment.h"
 #include "libzerocoin/Bulletproofs.h"
@@ -38,6 +39,41 @@ std::string Fail(bool fReverseTest = false)
 {
     return fReverseTest ? "[PASS (when it shouldn't!)]" : "[FAIL]";
 }
+
+// MrkleTree ----------------------------------------------------------------------------------------
+
+bool merkletree_tests()
+{
+    std::cout << colorBold << "*** merkletree_tests ***" << std::endl;
+    std::cout << "------------------------" << colorNormal << std::endl;
+
+    bool finalResult = true;
+
+    SelectParams(CBaseChainParams::MAIN);
+    ZerocoinParams *ZCParams = Params().Zerocoin_Params(false);
+    (void)ZCParams;
+
+    const int NumOfLeaves = 5000;
+    std::cout << "Testing with " << NumOfLeaves << " leaves" << std::endl;
+    CBN_vector leaves(NumOfLeaves);
+    random_vector_mod(leaves, ZCParams->coinCommitmentGroup.modulus);
+    /*
+    for(int i=0; i<NumOfLeaves; i++)  {
+        std::cout << "h" << i  << " = R(" << leaves[i].ToString(10) << ")" << std::endl;
+    }
+    */
+    std::cout << "--------------------" << std::endl;
+    AccumulatorMerkleTree accumulator(ZCParams, CoinDenomination::ZQ_ONE, leaves);
+    CBigNum rootHash = accumulator.getRootHash();
+    std::cout << "Root Hash:" << rootHash.ToString(10) << std::endl;
+
+    std::cout << std::endl;
+
+    return finalResult;
+}
+
+
+// ************ OLD TESTS ************************
 
 // Parameters ----------------------------------------------------------------------------------------
 
@@ -577,6 +613,7 @@ BOOST_AUTO_TEST_SUITE(zerocoin_zkp_tests)
 BOOST_AUTO_TEST_CASE(bulletproofs_tests)
 {
     std::cout << std::endl;
+    BOOST_CHECK(merkletree_tests());
     BOOST_CHECK(parameters_tests());
     BOOST_CHECK(arithmetic_circuit_tests());
     BOOST_CHECK(polynomial_commitment_tests());

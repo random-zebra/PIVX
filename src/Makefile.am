@@ -316,8 +316,10 @@ libzerocoin_libbitcoin_zerocoin_a_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS)
 libzerocoin_libbitcoin_zerocoin_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libzerocoin_libbitcoin_zerocoin_a_SOURCES = \
   libzerocoin/Accumulator.h \
+  libzerocoin/AccumulatorMerkleTree.h \
   libzerocoin/AccumulatorProofOfKnowledge.h \
   libzerocoin/ArithmeticCircuit.h \
+  libzerocoin/ArithmeticCircuit2.h \
   libzerocoin/bignum.h \
   libzerocoin/Bulletproofs.h \
   libzerocoin/Coin.h \
@@ -333,8 +335,10 @@ libzerocoin_libbitcoin_zerocoin_a_SOURCES = \
   libzerocoin/ZerocoinDefines.h \
   libzerocoin/zkplib.h \
   libzerocoin/Accumulator.cpp \
+  libzerocoin/AccumulatorMerkleTree.cpp \
   libzerocoin/AccumulatorProofOfKnowledge.cpp \
   libzerocoin/ArithmeticCircuit.cpp \
+  libzerocoin/ArithmeticCircuit2.cpp \
   libzerocoin/Bulletproofs.cpp \
   libzerocoin/Coin.cpp \
   libzerocoin/Denominations.cpp \

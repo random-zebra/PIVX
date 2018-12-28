@@ -59,4 +59,19 @@ const int ZKP_PADS = 0;
 const std::vector<int> ZKP_MS = {2,2,2,2,2,2,2,2,2};
 const int ZKP_SERIALSIZE = 256;
 
+enum ConstraintsListType {
+    Sparse,
+    NonSparse,
+    Zero
+};
+
+struct ConstraintsList {
+    ConstraintsListType type = ConstraintsListType::Zero;
+    CBN_vector row =  CBN_vector(0);
+};
+
+// ##############HashValues
+const int ZKP_treeLength = 4;
+const int ZKP_layerLength = 1 >> (ZKP_treeLength-1);
+
 #endif /* ZEROCOIN_H_ */
