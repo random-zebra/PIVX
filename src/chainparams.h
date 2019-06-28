@@ -131,6 +131,7 @@ public:
     int Zerocoin_StartTime() const { return nZerocoinStartTime; }
     int Block_Enforce_Invalid() const { return nBlockEnforceInvalidUTXO; }
     int Zerocoin_Block_V2_Start() const { return nBlockZerocoinV2; }
+    int Zerocoin_PublicSpendVersion(const int nHeight) const;
 
     // fake serial attack
     int Zerocoin_Block_EndFakeSerial() const { return nFakeSerialBlockheightEnd; }
@@ -211,6 +212,7 @@ protected:
     int nBlockZerocoinV2;
     int nBlockDoubleAccumulated;
     int nPublicZCSpends;
+    int nPublicZCSpendsV4;
 
     // fake serial attack
     int nFakeSerialBlockheightEnd = 0;
