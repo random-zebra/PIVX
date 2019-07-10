@@ -151,6 +151,11 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
 {
     nStakeModifier = 0;
     fGeneratedStakeModifier = false;
+
+    // modifier 0 on RegTest
+    if (Params().NetworkID() == CBaseChainParams::REGTEST) {
+        return true;
+    }
     if (!pindexPrev) {
         fGeneratedStakeModifier = true;
         return true; // genesis block's modifier is 0
@@ -245,16 +250,15 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
 bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64_t& nStakeModifier, int& nStakeModifierHeight, int64_t& nStakeModifierTime, bool fPrintProofOfStake)
 {
     nStakeModifier = 0;
+    // modifier 0 on RegTest
+    if (Params().NetworkID() == CBaseChainParams::REGTEST) {
+        return true;
+    }
     if (!mapBlockIndex.count(hashBlockFrom))
         return error("%s : block not indexed", __func__);
     const CBlockIndex* pindexFrom = mapBlockIndex[hashBlockFrom];
     nStakeModifierHeight = pindexFrom->nHeight;
     nStakeModifierTime = pindexFrom->GetBlockTime();
-    // Fixed stake modifier only for regtest
-    if (Params().NetworkID() == CBaseChainParams::REGTEST) {
-        nStakeModifier = pindexFrom->nStakeModifier;
-        return true;
-    }
     int64_t nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
     const CBlockIndex* pindex = pindexFrom;
     CBlockIndex* pindexNext = chainActive[pindexFrom->nHeight + 1];
@@ -429,8 +433,8 @@ bool CheckProofOfStake(const CBlock block, uint256& hashProofOfStake, std::uniqu
 
     unsigned int nBlockFromTime = blockfrom.nTime;
     unsigned int nTxTime = block.nTime;
-    if (!txin.IsZerocoinSpend() && nPreviousBlockHeight >= Params().Zerocoin_Block_Public_Spend_Enabled() - 1
-            && Params().NetworkID() != CBaseChainParams::REGTEST) {
+    if (Params().NetworkID() != CBaseChainParams::REGTEST &&
+            !txin.IsZerocoinSpend() && nPreviousBlockHeight >= Params().Zerocoin_Block_Public_Spend_Enabled() - 1) {
         //Equivalent for zPIV is checked above in ContextualCheckZerocoinStake()
         if (nTxTime < nBlockFromTime) // Transaction timestamp nTxTime
             return error("%s : nTime violation - nBlockFromTime=%d nTimeTx=%d", __func__, nBlockFromTime, nTxTime);
