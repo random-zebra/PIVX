@@ -173,6 +173,9 @@ public:
         nEnforceNewSporkKey = 1525158000; //!> Sporks signed after (GMT): Tuesday, May 1, 2018 7:00:00 AM GMT must use the new spork key
         nRejectOldSporkKey = 1527811200; //!> Fully reject old spork key after (GMT): Friday, June 1, 2018 12:00:00 AM
 
+        // Cold Staking enforcement
+        nColdStakingStart = 2880000;
+
         // Public coin spend enforcement
         nPublicZCSpends = 1880000;
         nPublicZCSpendsV4 = 2880000;
@@ -309,6 +312,9 @@ public:
         nEnforceNewSporkKey = 1521604800; //!> Sporks signed after Wednesday, March 21, 2018 4:00:00 AM GMT must use the new spork key
         nRejectOldSporkKey = 1522454400; //!> Reject old spork key after Saturday, March 31, 2018 12:00:00 AM GMT
 
+        // Cold Staking enforcement
+        nColdStakingStart = 2106100;
+
         // Public coin spend enforcement
         nPublicZCSpends = 1106100;
         nPublicZCSpendsV4 = 2106100;
@@ -404,6 +410,9 @@ public:
         nBlockRecalculateAccumulators = 999999999; //Trigger a recalculation of accumulators
         nBlockFirstFraudulent = 999999999; //First block that bad serials emerged
         nBlockLastGoodCheckpoint = 999999999; //Last valid accumulator checkpoint
+
+        // Cold Staking enforcement
+        nColdStakingStart = 251;
 
         // Public coin spend enforcement
         nPublicZCSpends = 350;
