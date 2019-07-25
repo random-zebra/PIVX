@@ -1153,6 +1153,7 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
     listReceived.clear();
     listSent.clear();
     strSentAccount = strFromAccount;
+    const bool isCoinStake = IsCoinStake();
 
     // Compute fee:
     CAmount nDebit = GetDebit(filter);
@@ -1171,8 +1172,11 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
         //   1) they debit from us (sent)
         //   2) the output is to us (received)
         if (nDebit > 0) {
-            // Don't report 'change' txouts
-            if (pwallet->IsChange(txout))
+            // Don't report 'change' txouts (except when this is staking of change)
+            if (!isCoinStake && pwallet->IsChange(txout))
+                continue;
+            // Don't report the first output of a CoinStake
+            if (isCoinStake && (i == 0))
                 continue;
         } else if (!(fIsMine & filter) && !hasZerocoinSpends)
             continue;
@@ -1182,7 +1186,7 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
         if (txout.IsZerocoinMint()) {
             address = CNoDestination();
         } else if (!ExtractDestination(txout.scriptPubKey, address)) {
-            if (!IsCoinStake() && !IsCoinBase()) {
+            if (isCoinStake && !IsCoinBase()) {
                 LogPrintf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n", this->GetHash().ToString());
             }
             address = CNoDestination();
