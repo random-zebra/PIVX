@@ -154,6 +154,7 @@ public:
         nStakeMinAge = 60 * 60;   // PIVX: 1 hour
         nMasternodeCountDrift = 20;
         nMaxMoneyOut = 21000000 * COIN;
+        nMinColdStakingAmount = 10 * COIN;
 
         /** Height or Time Based Activations **/
         nLastPOWBlock = 259200;

@@ -96,6 +96,8 @@ public:
     int GetBudgetCycleBlocks() const { return nBudgetCycleBlocks; }
     int64_t GetProposalEstablishmentTime() const { return nProposalEstablishmentTime; }
 
+    CAmount GetMinColdStakingAmount() const { return nMinColdStakingAmount; }
+
     /** Spork key and Masternode Handling **/
     std::string SporkKey() const { return strSporkKey; }
     std::string SporkKeyOld() const { return strSporkKeyOld; }
@@ -217,6 +219,7 @@ protected:
     int nPublicZCSpends;
     int nPublicZCSpendsV4;
     int nColdStakingStart;
+    CAmount nMinColdStakingAmount;
 
     // fake serial attack
     int nFakeSerialBlockheightEnd = 0;
