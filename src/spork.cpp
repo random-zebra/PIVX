@@ -6,13 +6,6 @@
 #include "spork.h"
 #include "sporkdb.h"
 
-/*
-#include "masternode-budget.h"
-#include "net.h"
-#include "sync.h"
-#include "sporkdb.h"
-*/
-
 class CSporkMessage;
 class CSporkManager;
 
@@ -21,7 +14,7 @@ CSporkManager sporkManager;
 std::map<uint256, CSporkMessage> mapSporks;
 
 // PIVX: on startup load spork values from previous session if they exist in the sporkDB
-void LoadSporksFromDB()
+void CSporkManager::LoadSporksFromDB()
 {
     for (int i = SPORK_START; i <= SPORK_END; ++i) {
         // Since not all spork IDs are in use, we have to exclude undefined IDs

@@ -53,11 +53,7 @@ class CSporkMessage;
 class CSporkManager;
 
 extern std::map<uint256, CSporkMessage> mapSporks;
-extern std::map<int, CSporkMessage> mapSporksActive;
 extern CSporkManager sporkManager;
-
-void LoadSporksFromDB();
-
 
 //
 // Spork Class
@@ -115,6 +111,8 @@ public:
     std::string GetSporkNameByID(int nSporkID);
 
     bool SetPrivKey(std::string strPrivKey);
+
+    void LoadSporksFromDB();
 };
 
 #endif
