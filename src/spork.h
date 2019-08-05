@@ -6,15 +6,11 @@
 #ifndef SPORK_H
 #define SPORK_H
 
-#include "base58.h"
 #include "key.h"
 #include "main.h"
-#include "net.h"
-#include "sync.h"
-#include "util.h"
-
 #include "obfuscation.h"
-#include "protocol.h"
+#include "sync.h"
+
 
 
 /*
@@ -61,10 +57,7 @@ extern std::map<int, CSporkMessage> mapSporksActive;
 extern CSporkManager sporkManager;
 
 void LoadSporksFromDB();
-void ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
-int64_t GetSporkValue(int nSporkID);
-bool IsSporkActive(int nSporkID);
-void ReprocessBlocks(int nBlocks);
+
 
 //
 // Spork Class
@@ -73,17 +66,18 @@ void ReprocessBlocks(int nBlocks);
 
 class CSporkMessage
 {
-public:
+private:
     std::vector<unsigned char> vchSig;
+
+public:
     int nSporkID;
     int64_t nValue;
     int64_t nTimeSigned;
 
-    uint256 GetHash()
-    {
-        uint256 n = HashQuark(BEGIN(nSporkID), END(nTimeSigned));
-        return n;
-    }
+    CSporkMessage(int nSporkID, int64_t nValue, int64_t nTimeSigned) : nSporkID(nSporkID), nValue(nValue), nTimeSigned(nTimeSigned) {}
+    CSporkMessage() : nSporkID(0), nValue(0), nTimeSigned(0) {}
+
+    uint256 GetHash() { return HashQuark(BEGIN(nSporkID), END(nTimeSigned)); }
 
     ADD_SERIALIZE_METHODS;
 
@@ -95,6 +89,10 @@ public:
         READWRITE(nTimeSigned);
         READWRITE(vchSig);
     }
+
+    bool Sign(std::string strSignKey);
+    bool CheckSignature();
+    void Relay();
 };
 
 
@@ -103,19 +101,20 @@ class CSporkManager
 private:
     std::vector<unsigned char> vchSig;
     std::string strMasterPrivKey;
+    std::map<int, CSporkMessage> mapSporksActive;
 
 public:
-    CSporkManager()
-    {
-    }
+    CSporkManager() {}
 
-    std::string GetSporkNameByID(int id);
-    int GetSporkIDByName(std::string strName);
+    void ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     bool UpdateSpork(int nSporkID, int64_t nValue);
+
+    bool IsSporkActive(int nSporkID);
+    int64_t GetSporkValue(int nSporkID);
+    int GetSporkIDByName(std::string strName);
+    std::string GetSporkNameByID(int nSporkID);
+
     bool SetPrivKey(std::string strPrivKey);
-    bool CheckSignature(CSporkMessage& spork);
-    bool Sign(CSporkMessage& spork);
-    void Relay(CSporkMessage& msg);
 };
 
 #endif
