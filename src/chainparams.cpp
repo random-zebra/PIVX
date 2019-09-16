@@ -344,7 +344,7 @@ public:
         nEnforceNewSporkKey = 1566860400; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1569538800; //!> Reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
         nBlockStakeModifierlV2 = 1214000;
-        nBlockTimeProtocolV2 = 1241547;     // !TODO: [ONLY FOR TESTING] CHANGE ME
+        nBlockTimeProtocolV2 = 1241333;     // !TODO: [ONLY FOR TESTING] CHANGE ME
         // Public coin spend enforcement
         nPublicZCSpends = 1106100;
 
