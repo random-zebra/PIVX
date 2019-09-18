@@ -159,14 +159,13 @@ public:
 
     // proof-of-stake specific fields
     uint256 GetBlockTrust() const;
-    uint64_t nStakeModifier;             // hash modifier for proof-of-stake
+    std::vector<unsigned char> nStakeModifier;             // hash modifier for proof-of-stake
     unsigned int nStakeModifierChecksum; // checksum of index; in-memeory only
     COutPoint prevoutStake;
     unsigned int nStakeTime;
     uint256 hashProofOfStake;
     int64_t nMint;
     int64_t nMoneySupply;
-    uint256 nStakeModifierV2;
 
     //! block header
     int nVersion;
@@ -201,8 +200,7 @@ public:
         nMint = 0;
         nMoneySupply = 0;
         nFlags = 0;
-        nStakeModifier = 0;
-        nStakeModifierV2 = uint256();
+        nStakeModifier.clear();
         nStakeModifierChecksum = 0;
         prevoutStake.SetNull();
         nStakeTime = 0;
@@ -376,12 +374,38 @@ public:
         return (nFlags & BLOCK_STAKE_MODIFIER);
     }
 
-    void SetStakeModifier(uint64_t nModifier, bool fGeneratedStakeModifier)
+    // sets v1 modifier from uint64_t
+    void SetStakeModifier(const uint64_t& nModifier, bool fGeneratedStakeModifier)
     {
-        nStakeModifier = nModifier;
+        const base_uint<64> nModifierBu = base_uint<64>(nModifier);
+        nStakeModifier = std::vector<unsigned char>(nModifierBu.begin(), nModifierBu.end());
         if (fGeneratedStakeModifier)
             nFlags |= BLOCK_STAKE_MODIFIER;
     }
+
+    // sets v2 modifier from uint256
+    void SetStakeModifier(const uint256& nModifier)
+    {
+        nStakeModifier = std::vector<unsigned char>(nModifier.begin(), nModifier.end());
+    }
+
+    // if available, saves v1 modifier in nModifier and returns true. else returns error.
+    bool GetOldStakeModifier(uint64_t& nModifier) const
+    {
+        if (nStakeModifier.size() != 8)
+            return error("%s : requested v1 modifier (8 bytes), got %d", __func__, nStakeModifier.size());
+        nModifier = base_uint<64>(nStakeModifier).GetLow64();
+        return true;
+    }
+
+    // returns current (v1/v2) modifier
+    std::vector<unsigned char> GetStakeModifier() const
+    {
+        return nStakeModifier;
+    }
+
+
+
 
     /**
      * Returns true if there are nRequired or more blocks of minVersion or above
@@ -465,17 +489,10 @@ public:
         if (nStatus & BLOCK_HAVE_UNDO)
             READWRITE(VARINT(nUndoPos));
 
-
         READWRITE(nMint);
         READWRITE(nMoneySupply);
         READWRITE(nFlags);
-
-        // v1/v2 modifier selection.
-        if (!Params().IsStakeModifierV2(nHeight)) {
-            READWRITE(nStakeModifier);
-        } else {
-            READWRITE(nStakeModifierV2);
-        }
+        READWRITE(nStakeModifier);
 
         if (IsProofOfStake()) {
             READWRITE(prevoutStake);

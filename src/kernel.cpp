@@ -30,7 +30,8 @@ static bool GetLastStakeModifier(const CBlockIndex* pindex, uint64_t& nStakeModi
         pindex = pindex->pprev;
     if (!pindex->GeneratedStakeModifier())
         return error("%s : no generation at genesis block", __func__);
-    nStakeModifier = pindex->nStakeModifier;
+    if(!pindex->GetOldStakeModifier(nStakeModifier))
+        return false;
     nModifierTime = pindex->GetBlockTime();
     return true;
 }
@@ -106,6 +107,8 @@ static bool SelectBlockFromCandidates(
     return fSelected;
 }
 
+
+
 /* NEW MODIFIER */
 
 // Stake Modifier (hash modifier of proof-of-stake):
@@ -119,13 +122,7 @@ uint256 ComputeStakeModifier(const CBlockIndex* pindexPrev, const uint256& kerne
         return uint256(); // genesis block's modifier is 0
 
     CHashWriter ss(SER_GETHASH, 0);
-    ss << kernel;
-
-    // switch with old modifier on upgrade block
-    if (!Params().IsStakeModifierV2(pindexPrev->nHeight + 1))
-        ss << pindexPrev->nStakeModifier;
-    else
-        ss << pindexPrev->nStakeModifierV2;
+    ss << kernel << pindexPrev->nStakeModifier;
 
     return ss.GetHash();
 }
@@ -247,7 +244,6 @@ bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64_t& nStakeModifier, int
     nStakeModifierTime = pindexFrom->GetBlockTime();
     // Fixed stake modifier only for regtest
     if (Params().NetworkID() == CBaseChainParams::REGTEST) {
-        nStakeModifier = pindexFrom->nStakeModifier;
         return true;
     }
     const CBlockIndex* pindex = pindexFrom;
@@ -267,8 +263,7 @@ bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64_t& nStakeModifier, int
         pindexNext = chainActive[pindex->nHeight + 1];
     } while (nStakeModifierTime < pindexFrom->GetBlockTime() + OLD_MODIFIER_INTERVAL);
 
-    nStakeModifier = pindex->nStakeModifier;
-    return true;
+    return pindex->GetOldStakeModifier(nStakeModifier);
 }
 
 bool CheckStakeKernelHash(const CBlockIndex* pindexPrev, const unsigned int nBits, CStakeInput* stake, const unsigned int nTimeTx, uint256& hashProofOfStake, const bool fVerify)
@@ -323,7 +318,7 @@ bool GetHashProofOfStake(const CBlockIndex* pindexPrev, CStakeInput* stake, cons
         modifier_ss << nStakeModifier;
     } else {
         // Modifier v2
-        modifier_ss << pindexPrev->nStakeModifierV2;
+        modifier_ss << pindexPrev->nStakeModifier;
     }
 
     CDataStream ss(modifier_ss);
