@@ -73,7 +73,13 @@ public:
     }
 
     explicit base_uint(const std::string& str);
-    explicit base_uint(const std::vector<unsigned char>& vch);
+
+    explicit base_uint(const std::vector<unsigned char>& vch)
+    {
+        if (vch.size() != sizeof(pn))
+            throw uint_error("Converting vector of wrong size to base_uint");
+        memcpy(pn, &vch[0], sizeof(pn));
+    }
 
     bool operator!() const
     {
