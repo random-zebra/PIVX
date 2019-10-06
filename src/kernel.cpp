@@ -371,7 +371,7 @@ bool Stake(const CBlockIndex* pindexPrev, CStakeInput* stakeInput, unsigned int 
 
         nTimeTx = GetCurrentTimeSlot();
         // double check that we are not on the same slot as prev block
-        if (nTimeTx <= pindexPrev->nTime)
+        if (nTimeTx <= pindexPrev->nTime && Params().NetworkID() != CBaseChainParams::REGTEST)
             return false;
 
         // check stake kernel
@@ -389,7 +389,9 @@ bool StakeV1(const CBlockIndex* pindexPrev, CStakeInput* stakeInput, const uint3
     // iterate from maxTime down to pindexPrev->nTime (or min time due to maturity, 60 min after blockFrom)
     const unsigned int prevBlockTime = pindexPrev->nTime;
     const unsigned int maxTime = pindexPrev->MaxFutureBlockTime();
-    const unsigned int minTime = std::max(prevBlockTime, nTimeBlockFrom + 3600);
+    unsigned int minTime = std::max(prevBlockTime, nTimeBlockFrom + 3600);
+    if (Params().NetworkID() == CBaseChainParams::REGTEST)
+        minTime = prevBlockTime;
     unsigned int nTryTime = maxTime;
 
     // check required maturity for stake
