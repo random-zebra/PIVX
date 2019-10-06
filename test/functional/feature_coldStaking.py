@@ -384,6 +384,7 @@ class PIVX_ColdStakingTest(BitcoinTestFramework):
             except JSONRPCException as e:
                 if ("Couldn't create new block" in str(e)):
                     # Sleep two seconds and retry
+                    self.log.info("Waiting...")
                     time.sleep(2)
                 else:
                     raise e
