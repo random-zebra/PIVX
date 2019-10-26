@@ -121,7 +121,7 @@ libzerocoin::ZerocoinParams* CChainParams::Zerocoin_Params(bool useModulusV1) co
 bool CChainParams::HasStakeMinAgeOrDepth(const int contextHeight, const uint32_t contextTime,
         const int utxoFromBlockHeight, const uint32_t utxoFromBlockTime) const
 {
-    // before stake modifier V2, the age required was 60 * 60 (1 hour)
+    // before stake modifier V2, the age required was 60 * 60 (1 hour). Not required for regtest
     if (!IsStakeModifierV2(contextHeight))
         return NetworkID() == CBaseChainParams::REGTEST || (utxoFromBlockTime + nStakeMinAge <= contextTime);
 
@@ -450,7 +450,7 @@ public:
         nBlockRecalculateAccumulators = 999999999; //Trigger a recalculation of accumulators
         nBlockFirstFraudulent = 999999999; //First block that bad serials emerged
         nBlockLastGoodCheckpoint = 999999999; //Last valid accumulator checkpoint
-        nBlockStakeModifierlV2 = 351;
+        nBlockStakeModifierlV2 = 255;
         nBlockTimeProtocolV2 = 999999999;
 
         // Public coin spend enforcement
