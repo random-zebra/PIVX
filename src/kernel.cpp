@@ -116,8 +116,10 @@ static bool SelectBlockFromCandidates(
 // must hash with a future stake modifier to generate the proof.
 uint256 ComputeStakeModifier(const CBlockIndex* pindexPrev, const uint256& kernel)
 {
-    if (!pindexPrev)
-        return uint256(); // genesis block's modifier is 0
+    // genesis block's modifier is 0
+    // all block's modifiers are 0 on regtest
+    if (!pindexPrev || Params().NetworkID() == CBaseChainParams::REGTEST)
+        return uint256();
 
     CHashWriter ss(SER_GETHASH, 0);
     ss << kernel;
