@@ -1302,9 +1302,6 @@ void CWallet::BlockConnected(const std::shared_ptr<const CBlock>& pblock, const 
             SyncTransaction(pblock->vtx[index], confirm);
             TransactionRemovedFromMempool(pblock->vtx[index]);
         }
-        for (const CTransactionRef& ptx : vtxConflicted) {
-            TransactionRemovedFromMempool(ptx);
-        }
 
         // Sapling: notify about the connected block
         // Get prev block tree anchor
