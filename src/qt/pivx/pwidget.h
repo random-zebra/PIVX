@@ -13,6 +13,7 @@
 class PIVXGUI;
 class ClientModel;
 class WalletModel;
+class WorkerTask;
 
 namespace Ui {
 class PWidget;
@@ -24,6 +25,8 @@ class PWidget : public QWidget, public Runnable
 public:
     explicit PWidget(PIVXGUI* _window = nullptr, QWidget *parent = nullptr);
     explicit PWidget(PWidget *parent = nullptr);
+
+    virtual ~PWidget();
 
     void setClientModel(ClientModel* model);
     void setWalletModel(WalletModel* model);
@@ -66,6 +69,8 @@ protected:
     bool verifyWalletUnlocked();
 
 private:
+    QSharedPointer<WorkerTask> task = nullptr;
+
     void init();
 private slots:
     void errorString(QString, int);
