@@ -101,6 +101,8 @@ void SelectBaseParams(CBaseChainParams::Network network)
 
 CBaseChainParams::Network NetworkIdFromCommandLine()
 {
+    return CBaseChainParams::TESTNET;   // !TODO: [ONLY FOR TESTING] CHANGE ME
+    /*
     bool fRegTest = GetBoolArg("-regtest", false);
     bool fTestNet = GetBoolArg("-testnet", false);
 
@@ -111,6 +113,7 @@ CBaseChainParams::Network NetworkIdFromCommandLine()
     if (fTestNet)
         return CBaseChainParams::TESTNET;
     return CBaseChainParams::MAIN;
+     */
 }
 
 bool SelectBaseParamsFromCommandLine()
