@@ -326,8 +326,8 @@ public:
         strNetworkID = "test";
         pchMessageStart[0] = 0x45;
         pchMessageStart[1] = 0x76;
-        pchMessageStart[2] = 0x65;
-        pchMessageStart[3] = 0xba;
+        pchMessageStart[2] = 0x25;
+        pchMessageStart[3] = 0x2a;
         vAlertPubKey = ParseHex("000010e83b2703ccf322f7dbd62dd5855ac7c10bd055814ce121ba32607d573b8810c02c0582aed05b4deb9c4b77b26d92428c61256cd42774babea0a073b2ed0c9");
         nDefaultPort = 51474;
         nEnforceBlockUpgradeMajority = 4320; // 75%
@@ -355,7 +355,7 @@ public:
         nRejectOldSporkKey = 1569538800; //!> Reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
         nBlockStakeModifierlV2 = 1214000;
         nBIP65ActivationHeight = 851019;
-        nBlockTimeProtocolV2 = 2214000;
+        nBlockTimeProtocolV2 = 1300700; // ONLY FOr testing
 
         // Public coin spend enforcement
         nPublicZCSpends = 1106100;
@@ -365,7 +365,7 @@ public:
 
         // Blocks v7
         nBlockLastAccumulatorCheckpoint = nPublicZCSpends - 10;
-        nBlockV7StartHeight = 2214000;
+        nBlockV7StartHeight = nBlockTimeProtocolV2;
 
         // Fake Serial Attack
         nFakeSerialBlockheightEnd = -1;
@@ -380,9 +380,10 @@ public:
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        vSeeds.push_back(CDNSSeedData("fuzzbawls.pw", "pivx-testnet.seed.fuzzbawls.pw"));
-        vSeeds.push_back(CDNSSeedData("fuzzbawls.pw", "pivx-testnet.seed2.fuzzbawls.pw"));
-        vSeeds.push_back(CDNSSeedData("warrows.dev", "testnet.dnsseed.pivx.warrows.dev"));
+        //vSeeds.push_back(CDNSSeedData("fuzzbawls.pw", "pivx-testnet.seed.fuzzbawls.pw"));
+        //vSeeds.push_back(CDNSSeedData("fuzzbawls.pw", "pivx-testnet.seed2.fuzzbawls.pw"));
+        //vSeeds.push_back(CDNSSeedData("warrows.dev", "testnet.dnsseed.pivx.warrows.dev"));
+        vSeeds.push_back(CDNSSeedData("blockbook-testnet.pivx.link", "blockbook-testnet.pivx.link"));  // !TODO: [ONLY FOR TESTING]
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 139); // Testnet pivx addresses start with 'x' or 'y'
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 19);  // Testnet pivx script addresses start with '8' or '9'
