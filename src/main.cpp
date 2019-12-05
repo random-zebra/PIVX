@@ -1338,8 +1338,9 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
                 __func__), REJECT_INVALID, "bad-tx");
 
     // Check transaction
-    int chainHeight = chainActive.Height();
-    bool fColdStakingActive = sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
+    const int chainHeight = chainActive.Height();
+    const bool fSporksSynced = masternodeSync.IsSporkListSynced();
+    const bool fColdStakingActive = !fSporksSynced || sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
     if (!CheckTransaction(tx, chainHeight >= Params().Zerocoin_StartHeight(), true, state, isBlockBetweenFakeSerialAttackRange(chainHeight), fColdStakingActive))
         return state.DoS(100, error("%s : CheckTransaction failed", __func__), REJECT_INVALID, "bad-tx");
 
@@ -1438,7 +1439,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
                                 __func__, tx.GetHash().GetHex()), REJECT_INVALID, "bad-txns-invalid-zpiv");
 
                     // Check that the version matches the one enforced with SPORK_18
-                    if (!CheckPublicCoinSpendVersion(publicSpend.getVersion())) {
+                    if (fSporksSynced && !CheckPublicCoinSpendVersion(publicSpend.getVersion())) {
                         return state.Invalid(error("%s : Public Zerocoin spend version %d not accepted. must be version %d.",
                                 __func__, publicSpend.getVersion(), CurrentPublicCoinSpendVersion()), REJECT_INVALID, "bad-txns-invalid-zpiv");
                     }
@@ -4467,6 +4468,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     }
 
     // Cold Staking enforcement (true during sync - reject P2CS outputs when false)
+    const bool fSporksSynced = masternodeSync.IsSporkListSynced();
     bool fColdStakingActive = true;
 
     // Zerocoin activation
@@ -4499,7 +4501,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
             }
 
             // set Cold Staking Spork
-            fColdStakingActive = sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
+            fColdStakingActive = !fSporksSynced || sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
 
             // check masternode/budget payment
             if (!IsBlockPayeeValid(block, nHeight)) {
@@ -4542,7 +4544,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                         }
                         spend = publicSpend;
                         // check that the version matches the one enforced with SPORK_18 (don't ban if it fails)
-                        if (!IsInitialBlockDownload() && !CheckPublicCoinSpendVersion(spend.getVersion())) {
+                        if (fSporksSynced && !IsInitialBlockDownload() && !CheckPublicCoinSpendVersion(spend.getVersion())) {
                             return state.DoS(0, error("%s : Public Zerocoin spend version %d not accepted. must be version %d.",
                                     __func__, spend.getVersion(), CurrentPublicCoinSpendVersion()), REJECT_INVALID, "bad-zcspend-version");
                         }
