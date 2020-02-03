@@ -22,14 +22,14 @@ struct CBlockTemplate;
 
 /** Get reliable pointer to current chain tip */
 CBlockIndex* GetChainTip();
-/** Generate a new block */
-CBlockTemplate* CreateNewBlock(CWallet* pwallet);
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 /** Check mined block */
 void UpdateTime(CBlockHeader* block, const CBlockIndex* pindexPrev);
 
 #ifdef ENABLE_WALLET
+    /** Generate a new block */
+    CBlockTemplate* CreateNewBlock(CWallet* pwallet);
     /** Run the miner threads */
     void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads);
 
