@@ -114,19 +114,27 @@ CBlockIndex* GetChainTip()
 }
 
 std::pair<int, std::pair<uint256, uint256> > pCheckpointCache;
-CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, bool fProofOfStake)
+CBlockTemplate* CreateNewBlock(CWallet* pwallet)
 {
-    CReserveKey reservekey(pwallet);
+    // Tip
+    CBlockIndex* pindexPrev = GetChainTip();
+    if (!pindexPrev) return nullptr;
+    const int nHeight = pindexPrev->nHeight + 1;
+    const bool fProofOfStake = (nHeight > Params().LAST_POW_BLOCK());
+
+    // Coinbase script
+    CScript scriptPubKey = CScript();
+    if (!fProofOfStake) {
+        CReserveKey reservekey(pwallet);
+        CPubKey pubkey;
+        if (!reservekey.GetReservedKey(pubkey)) return nullptr;
+        scriptPubKey = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
+    }
 
     // Create new block
     std::unique_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
     if (!pblocktemplate.get()) return nullptr;
     CBlock* pblock = &pblocktemplate->block; // pointer for convenience
-
-    // Tip
-    CBlockIndex* pindexPrev = GetChainTip();
-    if (!pindexPrev) return nullptr;
-    const int nHeight = pindexPrev->nHeight + 1;
 
     // Make sure to create the correct block version
     pblock->nVersion = 7;       //!> Removes accumulator checkpoints
@@ -142,7 +150,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     txNew.vin.resize(1);
     txNew.vin[0].prevout.SetNull();
     txNew.vout.resize(1);
-    txNew.vout[0].scriptPubKey = scriptPubKeyIn;
+    txNew.vout[0].scriptPubKey = scriptPubKey;
     pblock->vtx.push_back(txNew);
     pblocktemplate->vTxFees.push_back(-1);   // updated at end
     pblocktemplate->vTxSigOps.push_back(-1); // updated at end
@@ -522,27 +530,7 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
 double dHashesPerSec = 0.0;
 int64_t nHPSTimerStart = 0;
 
-CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, CWallet* pwallet)
-{
-    CPubKey pubkey;
-    if (!reservekey.GetReservedKey(pubkey))
-        return nullptr;
 
-    const int nHeightNext = chainActive.Tip()->nHeight + 1;
-    static int nLastPOWBlock = Params().LAST_POW_BLOCK();
-
-    // If we're building a late PoW block, don't continue
-    // PoS blocks are built directly with CreateNewBlock
-    if ((nHeightNext > nLastPOWBlock)) {
-        LogPrintf("%s: Aborting PoW block creation during PoS phase\n", __func__);
-        // sleep 1/2 a block time so we don't go into a tight loop.
-        MilliSleep((Params().TargetSpacing() * 1000) >> 1);
-        return nullptr;
-    }
-
-    CScript scriptPubKey = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
-    return CreateNewBlock(scriptPubKey, pwallet, false);
-}
 
 bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
 {
@@ -647,10 +635,9 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
         //
         unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
 
-        std::unique_ptr<CBlockTemplate> pblocktemplate((fProofOfStake ?
-                                                        CreateNewBlock(CScript(), pwallet, fProofOfStake) :
-                                                        CreateNewBlockWithKey(reservekey, pwallet)));
+        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(pwallet));
         if (!pblocktemplate.get()) continue;
+
         CBlock* pblock = &pblocktemplate->block;
 
         // POS - block found: process it

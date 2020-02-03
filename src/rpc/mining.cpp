@@ -139,7 +139,6 @@ UniValue generate(const UniValue& params, bool fHelp)
     const int nGenerate = params[0].get_int();
     int nHeightEnd = 0;
     int nHeight = 0;
-    CReserveKey reservekey(pwalletMain);
 
     {   // Don't keep cs_main locked
         LOCK(cs_main);
@@ -154,9 +153,7 @@ UniValue generate(const UniValue& params, bool fHelp)
     while (nHeight < nHeightEnd && !ShutdownRequested())
     {
         if (!fPoS) fPoS = (nHeight >= last_pow_block);
-        std::unique_ptr<CBlockTemplate> pblocktemplate(
-                fPoS ? CreateNewBlock(CScript(), pwalletMain, fPoS) : CreateNewBlockWithKey(reservekey, pwalletMain)
-                        );
+        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(pwalletMain));
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
         CBlock *pblock = &pblocktemplate->block;
@@ -533,8 +530,8 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
             delete pblocktemplate;
             pblocktemplate = NULL;
         }
-        CScript scriptDummy = CScript() << OP_TRUE;
-        pblocktemplate = CreateNewBlock(scriptDummy, pwalletMain, false);
+
+        pblocktemplate = CreateNewBlock(pwalletMain);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
