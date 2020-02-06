@@ -911,7 +911,7 @@ UniValue getspentzerocoinamount(const UniValue& params, bool fHelp)
     if (!input.IsZerocoinSpend())
         return -1;
 
-    libzerocoin::CoinSpend spend = TxInToZerocoinSpend(input);
+    libzerocoin::CoinSpend spend = ZPIVModule::ScriptSigToZerocoinSpend(input.scriptSig);
     CAmount nValue = libzerocoin::ZerocoinDenominationToAmount(spend.getDenomination());
     return FormatMoney(nValue);
 }

@@ -24,7 +24,6 @@ static int const PUBSPEND_SCHNORR = 4;
 
 class PublicCoinSpend : public libzerocoin::CoinSpend {
 public:
-
     PublicCoinSpend(libzerocoin::ZerocoinParams* params): pubCoin(params) {};
     PublicCoinSpend(libzerocoin::ZerocoinParams* params, const uint8_t version, const CBigNum& serial, const CBigNum& randomness, const uint256& ptxHash, CPubKey* pubkey);
     template <typename Stream> PublicCoinSpend(libzerocoin::ZerocoinParams* params, Stream& strm);
@@ -81,18 +80,25 @@ public:
 class CValidationState;
 
 namespace ZPIVModule {
+    // reads scriptSig and returns serialized CoinSpend or PublicCoinSpend object.
+    CDataStream ScriptSigToZerocoinSpend(const CScript& scriptSig, bool& isPublicSpendRet);
+
+    // returns (Private) CoinSpend from tx input
+    libzerocoin::CoinSpend TxInToZerocoinSpend(const CTxIn& txin);
+
+    // returns (Public) Coinspend from tx input and prevout data (public coin txOut hash)
+    PublicCoinSpend TxInToZerocoinSpend(const CTxIn& txin, libzerocoin::PublicCoin& pubCoin, uint256& txOutHash);
+
     bool createInput(CTxIn &in, CZerocoinMint& mint, uint256 hashTxOut, const int spendVersion);
-    PublicCoinSpend parseCoinSpend(const CTxIn &in);
-    bool parseCoinSpend(const CTxIn &in, const CTransaction& tx, const CTxOut &prevOut, PublicCoinSpend& publicCoinSpend);
     bool validateInput(const CTxIn &in, const CTxOut &prevOut, const CTransaction& tx, PublicCoinSpend& ret);
 
-    // Public zc spend parse
+    // Public Zerocoin spend parse
     /**
-     *
-     * @param in --> public zc spend input
-     * @param tx --> input parent
-     * @param publicCoinSpend ---> return the publicCoinSpend parsed
-     * @return true if everything went ok
+     * @param txin            : (const) transaction input containing the zerocoin spend
+     * @param tx              : (const) transaction spending txin
+     * @param state           : --> returns the validation state
+     * @param publicCoinSpend : --> returns the parsed CoinSpend object if return value is true
+     * @return                : (bool) false if there is any error. Otherwise true.
      */
     bool ParseZerocoinPublicSpend(const CTxIn &in, const CTransaction& tx, CValidationState& state, PublicCoinSpend& publicCoinSpend);
 };

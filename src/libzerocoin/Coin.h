@@ -45,6 +45,7 @@ namespace libzerocoin
 class PublicCoin
 {
 public:
+    PublicCoin() {}
     template <typename Stream>
     PublicCoin(const ZerocoinParams* p, Stream& strm) : params(p)
     {
@@ -82,9 +83,9 @@ public:
     }
 
 private:
-    const ZerocoinParams* params;
-    CBigNum value;
-    CoinDenomination denomination;
+    const ZerocoinParams* params{nullptr};
+    CBigNum value{};
+    CoinDenomination denomination{ZQ_ERROR};
 };
 
 /**

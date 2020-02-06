@@ -340,16 +340,6 @@ bool RemoveSerialFromDB(const CBigNum& bnSerial)
     return zerocoinDB->EraseCoinSpend(bnSerial);
 }
 
-libzerocoin::CoinSpend TxInToZerocoinSpend(const CTxIn& txin)
-{
-    // extract the CoinSpend from the txin
-    std::vector<char, zero_after_free_allocator<char> > dataTxIn;
-    dataTxIn.insert(dataTxIn.end(), txin.scriptSig.begin() + BIGNUM_SIZE, txin.scriptSig.end());
-    CDataStream serializedCoinSpend(dataTxIn, SER_NETWORK, PROTOCOL_VERSION);
-    libzerocoin::CoinSpend spend(serializedCoinSpend);
-    return spend;
-}
-
 bool TxOutToPublicCoin(const CTxOut& txout, libzerocoin::PublicCoin& pubCoin, CValidationState& state)
 {
     CBigNum publicZerocoin;

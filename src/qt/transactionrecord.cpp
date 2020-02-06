@@ -32,7 +32,10 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
     bool fZSpendFromMe = false;
 
     if (wtx.HasZerocoinSpendInputs()) {
-        libzerocoin::CoinSpend zcspend = wtx.HasZerocoinPublicSpendInputs() ? ZPIVModule::parseCoinSpend(wtx.vin[0]) : TxInToZerocoinSpend(wtx.vin[0]);
+        CDataStream strm = ZPIVModule::ScriptSigToZerocoinSpend(wtx.vin[0].scriptSig)
+        libzerocoin::CoinSpend zcspend = wtx.HasZerocoinPublicSpendInputs() ?
+                                         PublicCoinSpend(ZerocoinParams
+                                         TxInToZerocoinSpend(wtx.vin[0]);
         fZSpendFromMe = wallet->IsMyZerocoinSpend(zcspend.getCoinSerialNumber());
     }
 

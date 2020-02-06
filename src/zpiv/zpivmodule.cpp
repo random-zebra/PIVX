@@ -125,6 +125,33 @@ const uint256 PublicCoinSpend::signatureHash() const
 }
 
 namespace ZPIVModule {
+    CDataStream ScriptSigToZerocoinSpend(const CScript& scriptSig)
+    {
+        std::vector<char, zero_after_free_allocator<char> > data;
+        // skip opcode and data-len
+        uint8_t byteskip = ((uint8_t) scriptSig[1] + 2);
+        data.insert(data.end(), scriptSig.begin() + byteskip, scriptSig.end());
+        return CDataStream(data, SER_NETWORK, PROTOCOL_VERSION);
+    }
+
+    libzerocoin::CoinSpend TxInToZerocoinSpend(const CTxIn& txin)
+    {
+        libzerocoin::ZerocoinParams *params = Params().Zerocoin_Params(fUseV1Params)
+        return libzerocoin::CoinSpend(ScriptSigToZerocoinSpend(txin.scriptSig));
+    }
+
+    PublicCoinSpend TxInToZerocoinSpend(const CTxIn& txin,
+            libzerocoin::PublicCoin& pubCoin, uint256& txOutHash)
+    {
+        PublicCoinSpend spend(ScriptSigToZerocoinSpend(txin.scriptSig));
+        // Parse public informations from txin prevout
+        spend.pubCoin = pubCoin;
+        spend.setDenom(pubCoin.getDenomination());
+        spend.outputIndex = txin.prevout.n;
+        spend.txHash = txin.prevout.hash;
+        spend.setTxOutHash(txOutHash);
+        return spend;
+    }
 
     bool createInput(CTxIn &in, CZerocoinMint &mint, uint256 hashTxOut, const int spendVersion) {
         // check that this spend is allowed
@@ -171,39 +198,6 @@ namespace ZPIVModule {
         return true;
     }
 
-    PublicCoinSpend parseCoinSpend(const CTxIn &in) {
-        libzerocoin::ZerocoinParams *params = Params().Zerocoin_Params(false);
-        // skip opcode and data-len
-        uint8_t byteskip(in.scriptSig[1]);
-        byteskip += 2;
-        std::vector<char, zero_after_free_allocator<char> > data;
-        data.insert(data.end(), in.scriptSig.begin() + byteskip, in.scriptSig.end());
-        CDataStream serializedCoinSpend(data, SER_NETWORK, PROTOCOL_VERSION);
-
-        return PublicCoinSpend(params, serializedCoinSpend);
-    }
-
-    bool parseCoinSpend(const CTxIn &in, const CTransaction &tx, const CTxOut &prevOut, PublicCoinSpend &publicCoinSpend) {
-        if (!in.IsZerocoinPublicSpend() || !prevOut.IsZerocoinMint())
-            return error("%s: invalid argument/s", __func__);
-
-        PublicCoinSpend spend = parseCoinSpend(in);
-        spend.outputIndex = in.prevout.n;
-        spend.txHash = in.prevout.hash;
-        CMutableTransaction txNew(tx);
-        txNew.vin.clear();
-        spend.setTxOutHash(txNew.GetHash());
-
-        // Check prev out now
-        CValidationState state;
-        if (!TxOutToPublicCoin(prevOut, spend.pubCoin, state))
-            return error("%s: cannot get mint from output", __func__);
-
-        spend.setDenom(spend.pubCoin.getDenomination());
-        publicCoinSpend = spend;
-        return true;
-    }
-
     bool validateInput(const CTxIn &in, const CTxOut &prevOut, const CTransaction &tx, PublicCoinSpend &publicSpend) {
         // Now prove that the commitment value opens to the input
         if (!parseCoinSpend(in, tx, prevOut, publicSpend)) {
@@ -218,15 +212,31 @@ namespace ZPIVModule {
 
     bool ParseZerocoinPublicSpend(const CTxIn &txIn, const CTransaction& tx, CValidationState& state, PublicCoinSpend& publicSpend)
     {
-        CTxOut prevOut;
-        if(!GetOutput(txIn.prevout.hash, txIn.prevout.n ,state, prevOut)){
-            return state.DoS(100, error("%s: public zerocoin spend prev output not found, prevTx %s, index %d",
-                                        __func__, txIn.prevout.hash.GetHex(), txIn.prevout.n));
-        }
-        if (!ZPIVModule::parseCoinSpend(txIn, tx, prevOut, publicSpend)) {
-            return state.Invalid(error("%s: invalid public coin spend parse %s\n", __func__,
-                                       tx.GetHash().GetHex()), REJECT_INVALID, "bad-txns-invalid-zpiv");
-        }
+        std::string str_prevOut = txIn.prevout.ToString();
+        // Check that this is indeed a zerocoin public spend
+        if (!txIn.IsZerocoinPublicSpend())
+            return state.DoS(100, error("%s: called on non-public zerocoin input", __func__));
+
+        // Get Referenced previous output and check that it is indeed a zerocoin mint
+        const CTxOut prevOut;
+        if(!GetOutput(txIn.prevout.hash, txIn.prevout.n ,state, prevOut))
+            return state.DoS(100, error("%s: public zerocoin spend prev output (%s) not found.", __func__, str_prevOut));
+        if (!prevOut.IsZerocoinMint())
+            return state.DoS(100, error("%s: public zerocoin spend prev output (%s) is not a zc mint.", __func__, str_prevOut));
+
+        // Get referenced public coin
+        libzerocoin::PublicCoin pubCoin;
+        CValidationState state;
+        if (!TxOutToPublicCoin(prevOut, pubCoin, state))
+            return state.DoS(100, error("%s: unable to get public coin from prev output (%s).", __func__, str_prevOut));
+
+        // Get tx hash
+        CMutableTransaction txNew(tx);
+        txNew.vin.clear();
+        uint256 txOutHash = txNew.GetHash();
+
+        // Parse the public spend
+        publicCoinSpend = TxInToZerocoinSpend(txIn, &pubCoin, &txOutHash);
         return true;
     }
 }
