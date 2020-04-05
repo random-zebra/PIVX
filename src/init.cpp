@@ -1512,8 +1512,8 @@ bool AppInit2()
 
                 // Recalculate money supply for blocks that are impacted by accounting issue after zerocoin activation
                 if (GetBoolArg("-reindexmoneysupply", false)) {
-                    // Recalculate from the zerocoin activation or from scratch.
-                    RecalculatePIVSupply(1, false);
+                    // Skip zpiv if already reindexed
+                    RecalculatePIVSupply(1, fReindexZerocoin);
                 }
 
                 if (!fReindex) {
