@@ -2674,10 +2674,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         RecalculatePIVSupply(consensus.height_start_ZC);
     }
 
-    //Track zPIV money supply in the block index
-    if (!UpdateZPIVSupply(block, pindex, fJustCheck))
+    //Track zPIV money supply
+    if (!UpdateZPIVSupply(block, pindex, fJustCheck)) {
         return state.DoS(100, error("%s: Failed to calculate new zPIV supply for block=%s height=%d", __func__,
                                     block.GetHash().GetHex(), pindex->nHeight), REJECT_INVALID);
+    }
 
     // track money supply and mint amount info
     CAmount nMoneySupplyPrev = pindex->pprev ? pindex->pprev->nMoneySupply : 0;
@@ -2847,8 +2848,13 @@ bool static FlushStateToDisk(CValidationState& state, FlushStateMode mode)
                 }
             }
             // Finally flush the chainstate (which may refer to block index entries).
-            if (!pcoinsTip->Flush())
+            if (!pcoinsTip->Flush()) {
                 return AbortNode(state, "Failed to write to coin database");
+            }
+            // Flush zerocoin supply
+            if (!zerocoinDB->WriteZCSupply(mapZerocoinSupply)) {
+                return AbortNode(state, "Failed to write zerocoin supply to DB");
+            }
             // Update best block in wallet (so we can detect restored wallets).
             if (mode != FLUSH_STATE_IF_NEEDED) {
                 GetMainSignals().SetBestChain(chainActive.GetLocator());
