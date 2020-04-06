@@ -1495,12 +1495,13 @@ bool AppInit2()
                     mapZerocoinSupply.clear();
                     for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
                 } else {
-                    const uint256& tipHash = WITH_LOCK(cs_main, return chainActive.Tip()->GetBlockHash());
+                    const uint256& tipHash = WITH_LOCK(cs_main, return chainActive[chainHeight]->GetBlockHash());
                     CLegacyBlockIndex bi;
 
                     if (!fReindexMoneySupply && !pblocktree->ReadMoneySupply(nMoneySupply)) {
                         // try first reading legacy block index from disk
                         if (pblocktree->ReadLegacyBlockIndex(tipHash, bi) && bi.nMoneySupply > 0) {
+                            LogPrintf("MYDEBUG - load block %d with supply %s\n", chainHeight, FormatMoney(bi.nMoneySupply));
                             nMoneySupply = bi.nMoneySupply;
                         } else {
                             // reindex from disk
