@@ -2035,6 +2035,8 @@ void DataBaseAccChecksum(CBlockIndex* pindex, bool fWrite)
 
 bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& view, bool* pfClean)
 {
+    LogPrintf("MYDEBUG In Disconnect!\n");
+
     if (pindex->GetBlockHash() != view.GetBestBlock())
         LogPrintf("%s : pindex=%s view=%s\n", __func__, pindex->GetBlockHash().GetHex(), view.GetBestBlock().GetHex());
     assert(pindex->GetBlockHash() == view.GetBestBlock());
@@ -2119,8 +2121,6 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                         return error("DisconnectBlock(): Failed to erase coin mint");
                 }
             }
-        } else if (!tx.IsCoinBase() && view.HaveInputs(tx)) {
-            nValueIn += view.GetValueIn(tx);
         }
         nValueOut += tx.GetValueOut();
 
@@ -2177,10 +2177,15 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
                 coins->vout[out.n] = undo.txout;
             }
         }
+
+        if (!tx.HasZerocoinSpendInputs() && !tx.IsCoinBase() && view.HaveInputs(tx))
+            nValueIn += view.GetValueIn(tx);
     }
 
     // track money
+    LogPrintf("MYDEBUG - updating at block %d with supply %s\n", pindex->nHeight, FormatMoney(nMoneySupply));
     nMoneySupply -= (nValueOut - nValueIn);
+    LogPrintf("MYDEBUG - new supply %s\n", FormatMoney(nMoneySupply));
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
@@ -2451,7 +2456,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
 
         // track money supply
+        LogPrintf("MYDEBUG - updating at block %d with supply %s\n", pindex->nHeight, FormatMoney(nMoneySupply));
         nMoneySupply += (nValueOut - nValueIn);
+        LogPrintf("MYDEBUG - new supply %s\n", FormatMoney(nMoneySupply));
     }
     const int64_t nMint = (nValueOut - nValueIn) + nFees;
 
@@ -4499,6 +4506,7 @@ CVerifyDB::~CVerifyDB()
 
 bool CVerifyDB::VerifyDB(CCoinsView* coinsview, int nCheckLevel, int nCheckDepth)
 {
+    LogPrintf("MYDEBUG In verify...\n");
     LOCK(cs_main);
     if (chainActive.Tip() == NULL || chainActive.Tip()->pprev == NULL)
         return true;
