@@ -1487,7 +1487,8 @@ bool AppInit2()
 
                 bool fReindexZerocoin = GetBoolArg("-reindexzerocoin", false);
 
-                // Load zerocoin supply from db
+                // Load PIV and zPIV supply from db
+                nMoneySupply = 0; // !TODO: add databasing
                 const int chainHeight = WITH_LOCK(cs_main, return chainActive.Height());
                 if (!fReindexZerocoin && !zerocoinDB->ReadZCSupply(mapZerocoinSupply)) {
                     if (chainHeight < consensus.height_start_ZC) {
