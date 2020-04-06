@@ -1486,24 +1486,41 @@ bool AppInit2()
                 invalid_out::LoadSerials();
 
                 bool fReindexZerocoin = GetBoolArg("-reindexzerocoin", false);
+                bool fReindexMoneySupply = GetBoolArg("-reindexmoneysupply", false);
 
                 // Load PIV and zPIV supply from db
-                nMoneySupply = 0; // !TODO: add databasing
-                const int chainHeight = WITH_LOCK(cs_main, return chainActive.Height());
-                if (!fReindexZerocoin && !zerocoinDB->ReadZCSupply(mapZerocoinSupply)) {
-                    if (chainHeight < consensus.height_start_ZC) {
-                        // initialize supply to 0
-                        mapZerocoinSupply.clear();
-                        for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
-                    } else {
+                int chainHeight = WITH_LOCK(cs_main, return chainActive.Height());
+                if (chainHeight < 0) {
+                    nMoneySupply = 0;
+                    mapZerocoinSupply.clear();
+                    for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
+                } else {
+                    const uint256& tipHash = WITH_LOCK(cs_main, return chainActive.Tip()->GetBlockHash());
+                    CLegacyBlockIndex bi;
+
+                    if (!fReindexMoneySupply && !pblocktree->ReadMoneySupply(nMoneySupply)) {
                         // try first reading legacy block index from disk
-                        const uint256& tipHash = WITH_LOCK(cs_main, return chainActive.Tip()->GetBlockHash());
-                        CLegacyBlockIndex bi;
-                        if (pblocktree->ReadLegacyBlockIndex(tipHash, bi) && !bi.mapZerocoinSupply.empty()) {
-                            mapZerocoinSupply = bi.mapZerocoinSupply;
+                        if (pblocktree->ReadLegacyBlockIndex(tipHash, bi) && bi.nMoneySupply > 0) {
+                            nMoneySupply = bi.nMoneySupply;
                         } else {
                             // reindex from disk
-                            fReindexZerocoin = true;
+                            fReindexMoneySupply = true;
+                        }
+                    }
+
+                    if (!fReindexZerocoin && !zerocoinDB->ReadZCSupply(mapZerocoinSupply)) {
+                        if (chainHeight < consensus.height_start_ZC) {
+                            // initialize supply to 0
+                            mapZerocoinSupply.clear();
+                            for (auto& denom : libzerocoin::zerocoinDenomList) mapZerocoinSupply.insert(std::make_pair(denom, 0));
+                        } else {
+                            // try first reading legacy block index from disk
+                            if ((bi.nHeight != 0 || pblocktree->ReadLegacyBlockIndex(tipHash, bi)) && !bi.mapZerocoinSupply.empty()) {
+                                mapZerocoinSupply = bi.mapZerocoinSupply;
+                            } else {
+                                // reindex from disk
+                                fReindexZerocoin = true;
+                            }
                         }
                     }
                 }
@@ -1519,7 +1536,7 @@ bool AppInit2()
                 }
 
                 // Recalculate money supply for blocks that are impacted by accounting issue after zerocoin activation
-                if (GetBoolArg("-reindexmoneysupply", false)) {
+                if (fReindexMoneySupply) {
                     // Skip zpiv if already reindexed
                     RecalculatePIVSupply(1, fReindexZerocoin);
                 }

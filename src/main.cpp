@@ -2608,6 +2608,10 @@ bool static FlushStateToDisk(CValidationState& state, FlushStateMode mode)
             if (!pcoinsTip->Flush()) {
                 return AbortNode(state, "Failed to write to coin database");
             }
+            // Flush money supply
+            if (!pblocktree->WriteMoneySupply(nMoneySupply)) {
+                return AbortNode(state, "Failed to write money supply to DB");
+            }
             // Flush zerocoin supply
             if (!zerocoinDB->WriteZCSupply(mapZerocoinSupply)) {
                 return AbortNode(state, "Failed to write zerocoin supply to DB");
