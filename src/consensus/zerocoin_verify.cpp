@@ -249,7 +249,7 @@ bool RecalculatePIVSupply(int nHeightStart, bool fSkipZpiv)
 
         // Rewrite zpiv supply too
         if (!fSkipZpiv && pindex->nHeight >= consensus.height_start_ZC) {
-            UpdateZPIVSupplyConnect(block, pindex, true);
+            UpdateZPIVSupplyConnect(block, pindex);
         }
 
         // Add fraudulent funds to the supply and remove any recovered funds.

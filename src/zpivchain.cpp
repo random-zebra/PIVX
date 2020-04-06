@@ -280,7 +280,7 @@ std::string ReindexZerocoinDB()
             return _("Reindexing zerocoin failed");
         }
         // update supply
-        UpdateZPIVSupplyConnect(block, pindex, true);
+        UpdateZPIVSupplyConnect(block, pindex);
 
         for (const CTransaction& tx : block.vtx) {
             for (unsigned int i = 0; i < tx.vin.size(); i++) {
@@ -412,7 +412,7 @@ int64_t GetZerocoinSupply()
     return nTotal;
 }
 
-bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
+bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex)
 {
     const Consensus::Params& consensus = Params().GetConsensus();
     if (pindex->nHeight < consensus.height_start_ZC)
@@ -426,7 +426,7 @@ bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex, bool fJus
         for (const CZerocoinMint& m : listMints) {
             mapZerocoinSupply.at(m.GetDenomination())++;
             //Remove any of our own mints from the mintpool
-            if (!fJustCheck && pwalletMain) {
+            if (pwalletMain) {
                 if (pwalletMain->IsMyMint(m.GetValue())) {
                     pwalletMain->UpdateMint(m.GetValue(), pindex->nHeight, m.GetTxHash(), m.GetDenomination());
                     // Add the transaction to the wallet

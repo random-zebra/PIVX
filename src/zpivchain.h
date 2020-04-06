@@ -42,7 +42,7 @@ std::list<libzerocoin::CoinDenomination> ZerocoinSpendListFromBlock(const CBlock
 /** Global variable for the zerocoin supply */
 extern std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
 int64_t GetZerocoinSupply();
-bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex, bool fJustCheck);
+bool UpdateZPIVSupplyConnect(const CBlock& block, CBlockIndex* pindex);
 bool UpdateZPIVSupplyDisconnect(const CBlock& block, CBlockIndex* pindex);
 
 #endif //PIVX_ZPIVCHAIN_H
