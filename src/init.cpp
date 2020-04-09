@@ -1061,7 +1061,7 @@ bool AppInit2()
 #ifndef WIN32
     CreatePidFile(GetPidFile(), getpid());
 #endif
-    if (GetBoolArg("-shrinkdebugfile", logCategories != BCLog::NONE))
+    if (GetBoolArg("-shrinkdebugfile", logCategories == BCLog::NONE))
         ShrinkDebugFile();
     if (fPrintToDebugLog)
         OpenDebugLog();
