@@ -17,6 +17,11 @@
 
 class CTransaction;
 
+/** Transaction types */
+enum TxType {
+    TRANSACTION_NORMAL = 0,
+};
+
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
 {
@@ -222,24 +227,25 @@ private:
 
 public:
     // Default transaction version.
-    static const int32_t CURRENT_VERSION=1;
+    static const int32_t CURRENT_VERSION = 1;
 
     // Changing the default transaction version requires a two step process: first
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
     // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
     // MAX_STANDARD_VERSION will be equal.
-    static const int32_t MAX_STANDARD_VERSION=2;
+    static const int32_t MAX_STANDARD_VERSION = 3;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, CTransaction is not
     // actually immutable; deserialization and assignment are implemented,
     // and bypass the constness. This is safe, as they update the entire
     // structure, including the hash.
-    const int32_t nVersion;
+    const int16_t nVersion;
+    const int16_t nType;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
     const uint32_t nLockTime;
-    //const unsigned int nTime;
+    const std::vector<uint8_t> vExtraPayload; // only available for special transaction types
 
     /** Construct a CTransaction that qualifies as IsNull() */
     CTransaction();
@@ -253,10 +259,13 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(*const_cast<int32_t*>(&nVersion));
+        READWRITE(*const_cast<int16_t*>(&nVersion));
+        READWRITE(*const_cast<int16_t*>(&nType));
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
         READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
+        if (IsSpecialTx())
+            READWRITE(*const_cast<std::vector<uint8_t>*>(&vExtraPayload));
         if (ser_action.ForRead())
             UpdateHash();
     }
@@ -267,6 +276,10 @@ public:
 
     const uint256& GetHash() const {
         return hash;
+    }
+
+    inline bool IsSpecialTx() const {
+        return (this->nVersion == 3 && this->nType != TxType::TRANSACTION_NORMAL);
     }
 
     // Return sum of txouts.
@@ -321,22 +334,32 @@ public:
 /** A mutable version of CTransaction. */
 struct CMutableTransaction
 {
-    int32_t nVersion;
+    int16_t nVersion;
+    int16_t nType;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
     uint32_t nLockTime;
+    std::vector<uint8_t> vExtraPayload; // only available for special transaction types
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);
+
+    inline bool IsSpecialTx() const {
+        return (this->nVersion == 3 && this->nType != TxType::TRANSACTION_NORMAL);
+    }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nVersion);
+        READWRITE(nType);
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
+        if (IsSpecialTx()) {
+            READWRITE(vExtraPayload);
+        }
     }
 
     /** Compute the hash of this CMutableTransaction. This is computed on the

@@ -28,6 +28,9 @@ static const CAmount MIN_COLDSTAKING_AMOUNT = 1 * COIN;
 /** The default maximum reorganization depth **/
 static const int DEFAULT_MAX_REORG_DEPTH = 100;
 
+/** The maximum allowed size of version 2 extra payload */
+static const unsigned int MAX_TX_EXTRA_PAYLOAD = 10000;
+
 /** Flags for nSequence and nLockTime locks */
 enum {
     /* Interpret sequence numbers as relative lock-time constraints. */
