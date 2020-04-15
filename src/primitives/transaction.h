@@ -25,6 +25,11 @@ class CTransaction;
 // can be removed once v5 enforcement is activated.
 extern std::atomic<bool> g_IsSaplingActive;
 
+/** Transaction types */
+enum TxType {
+    TRANSACTION_NORMAL = 0,
+};
+
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class BaseOutPoint
 {
@@ -258,11 +263,13 @@ public:
     // actually immutable; deserialization and assignment are implemented,
     // and bypass the constness. This is safe, as they update the entire
     // structure, including the hash.
-    const int32_t nVersion;
+    const int16_t nVersion;
+    const int16_t nType;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
     const uint32_t nLockTime;
     Optional<SaplingTxData> sapData{SaplingTxData()}; // Future: Don't initialize it by default
+    Optional<std::vector<uint8_t> > vExtraPayload; // only available for special transaction types
 
     /** Construct a CTransaction that qualifies as IsNull() */
     CTransaction();
@@ -277,15 +284,16 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(*const_cast<int32_t*>(&nVersion));
+        READWRITE(*const_cast<int16_t*>(&nVersion));
+        READWRITE(*const_cast<int16_t*>(&nType));
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
         READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
-
-        if (g_IsSaplingActive && nVersion == CTransaction::SAPLING_VERSION) {
+        if (g_IsSaplingActive && nVersion == SAPLING_VERSION) {
             READWRITE(*const_cast<Optional<SaplingTxData>*>(&sapData));
+            if (nType != TxType::TRANSACTION_NORMAL)
+                READWRITE(*const_cast<Optional<std::vector<uint8_t> >*>(&vExtraPayload));
         }
-
         if (ser_action.ForRead())
             UpdateHash();
     }
@@ -308,10 +316,14 @@ public:
             !sapData->vShieldedSpend.empty());
     };
 
-    bool isSapling() const
+    inline bool isSapling() const { return nVersion == SAPLING_VERSION && nType == TxType::TRANSACTION_NORMAL;}
+
+    bool hasExtraPayload() const
     {
-        return nVersion == SAPLING_VERSION;
-    }
+        return vExtraPayload != nullopt && !vExtraPayload->empty();
+    };
+
+    inline bool isSpecialTx() const { return nVersion == SAPLING_VERSION && nType != TxType::TRANSACTION_NORMAL; }
 
     /*
      * Context for the two methods below:
@@ -370,16 +382,32 @@ public:
     std::string ToString() const;
 
     size_t DynamicMemoryUsage() const;
+
+    // Special txes payload
+    template <typename T> bool GetPayload(T& obj) const
+    {
+        if (!hasExtraPayload())
+            return false;
+        CDataStream ds(*vExtraPayload, SER_NETWORK, PROTOCOL_VERSION);
+        try {
+            ds >> obj;
+        } catch (std::exception& e) {
+            return false;
+        }
+        return ds.empty();
+    }
 };
 
 /** A mutable version of CTransaction. */
 struct CMutableTransaction
 {
-    int32_t nVersion;
+    int16_t nVersion;
+    int16_t nType;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
     uint32_t nLockTime;
     Optional<SaplingTxData> sapData{SaplingTxData()}; // Future: Don't initialize it by default
+    Optional<std::vector<uint8_t> > vExtraPayload; // only available for special transaction types
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);
@@ -389,12 +417,14 @@ struct CMutableTransaction
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nVersion);
+        READWRITE(nType);
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
-
         if (g_IsSaplingActive && nVersion == CTransaction::SAPLING_VERSION) {
             READWRITE(*const_cast<Optional<SaplingTxData>*>(&sapData));
+            if (nType != TxType::TRANSACTION_NORMAL)
+                READWRITE(*const_cast<Optional<std::vector<uint8_t> >*>(&vExtraPayload));
         }
     }
 
@@ -403,12 +433,18 @@ struct CMutableTransaction
         Unserialize(s);
     }
 
+    // Set special transaction payload
+    template <typename T> void SetPayload(const T& obj)
+    {
+        CDataStream ds(SER_NETWORK, PROTOCOL_VERSION);
+        ds << obj;
+        vExtraPayload = std::vector<uint8_t>(ds.begin(), ds.end());
+    }
+
     /** Compute the hash of this CMutableTransaction. This is computed on the
      * fly, as opposed to GetHash() in CTransaction, which uses a cached result.
      */
     uint256 GetHash() const;
-
-    std::string ToString() const;
 };
 
 typedef std::shared_ptr<const CTransaction> CTransactionRef;

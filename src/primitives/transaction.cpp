@@ -117,27 +117,12 @@ std::string CTxOut::ToString() const
     return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0,30));
 }
 
-CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nLockTime(0) {}
-CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), sapData(tx.sapData) {}
+CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nType(TxType::TRANSACTION_NORMAL), nLockTime(0) {}
+CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), nType(tx.nType), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), sapData(tx.sapData), vExtraPayload(tx.vExtraPayload) {}
 
 uint256 CMutableTransaction::GetHash() const
 {
     return SerializeHash(*this);
-}
-
-std::string CMutableTransaction::ToString() const
-{
-    std::string str;
-    str += strprintf("CMutableTransaction(ver=%d, vin.size=%u, vout.size=%u, nLockTime=%u)\n",
-        nVersion,
-        vin.size(),
-        vout.size(),
-        nLockTime);
-    for (unsigned int i = 0; i < vin.size(); i++)
-        str += "    " + vin[i].ToString() + "\n";
-    for (unsigned int i = 0; i < vout.size(); i++)
-        str += "    " + vout[i].ToString() + "\n";
-    return str;
 }
 
 void CTransaction::UpdateHash() const
@@ -150,23 +135,25 @@ size_t CTransaction::DynamicMemoryUsage() const
     return memusage::RecursiveDynamicUsage(vin) + memusage::RecursiveDynamicUsage(vout);
 }
 
-CTransaction::CTransaction() : nVersion(CTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0) { }
+CTransaction::CTransaction() : nVersion(CTransaction::CURRENT_VERSION), nType(TxType::TRANSACTION_NORMAL), vin(), vout(), nLockTime(0) { }
 
-CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), sapData(tx.sapData) {
+CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), nType(tx.nType), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), sapData(tx.sapData), vExtraPayload(tx.vExtraPayload) {
     UpdateHash();
 }
 
-CTransaction::CTransaction(CMutableTransaction &&tx) : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime) {
+CTransaction::CTransaction(CMutableTransaction &&tx) : nVersion(tx.nVersion), nType(tx.nType), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime), sapData(std::move(tx.sapData)), vExtraPayload(std::move(tx.vExtraPayload)) {
     UpdateHash();
 }
 
 CTransaction& CTransaction::operator=(const CTransaction &tx) {
-    *const_cast<int*>(&nVersion) = tx.nVersion;
+    *const_cast<int16_t*>(&nVersion) = tx.nVersion;
+    *const_cast<int16_t*>(&nType) = tx.nType;
     *const_cast<std::vector<CTxIn>*>(&vin) = tx.vin;
     *const_cast<std::vector<CTxOut>*>(&vout) = tx.vout;
     *const_cast<unsigned int*>(&nLockTime) = tx.nLockTime;
-    *const_cast<uint256*>(&hash) = tx.hash;
     *const_cast<Optional<SaplingTxData>*>(&sapData) = tx.sapData;
+    *const_cast<Optional<std::vector<uint8_t> >*>(&vExtraPayload) = tx.vExtraPayload;
+    *const_cast<uint256*>(&hash) = tx.hash;
     return *this;
 }
 
@@ -333,25 +320,27 @@ unsigned int CTransaction::GetTotalSize() const
 
 std::string CTransaction::ToString() const
 {
-    std::string str;
-    if (nVersion == CTransaction::SAPLING_VERSION && sapData) {
-        str += strprintf("CTransaction(hash=%s, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%u, valueBalance=%u, vShieldedSpend.size=%u, vShieldedOutput.size=%u)\n",
-                         GetHash().ToString().substr(0,10),
-                         nVersion,
-                         vin.size(),
-                         vout.size(),
-                         nLockTime,
-                         sapData->valueBalance,
-                         sapData->vShieldedSpend.size(),
-                         sapData->vShieldedOutput.size());
-    } else {
-            str += strprintf("CTransaction(hash=%s, ver=%d, vin.size=%u, vout.size=%u, nLockTime=%u)\n",
-                             GetHash().ToString().substr(0, 10),
-                             nVersion,
-                             vin.size(),
-                             vout.size(),
-                             nLockTime);
+    std::string str = strprintf("CTransaction(hash=%s, ver=%d, type=%d, vin.size=%u, vout.size=%u, nLockTime=%u",
+                                GetHash().ToString().substr(0, 10),
+                                nVersion,
+                                nType,
+                                vin.size(),
+                                vout.size(),
+                                nLockTime);
+
+    if (nVersion == CTransaction::SAPLING_VERSION) {
+        if (sapData) {
+            str += strprintf(", valueBalance=%u, vShieldedSpend.size=%u, vShieldedOutput.size=%u",
+                             sapData->valueBalance,
+                             sapData->vShieldedSpend.size(),
+                             sapData->vShieldedOutput.size());
+        }
+        if (vExtraPayload) {
+            str += strprintf(", vExtraPayload.size=%d", vExtraPayload->size());
+        }
     }
+
+    str += ")\n";
     for (unsigned int i = 0; i < vin.size(); i++)
         str += "    " + vin[i].ToString() + "\n";
     for (unsigned int i = 0; i < vout.size(); i++)
