@@ -21,6 +21,7 @@
 #include "consensus/tx_verify.h"
 #include "consensus/validation.h"
 #include "consensus/zerocoin_verify.h"
+#include "evo/specialtx.h"
 #include "fs.h"
 #include "guiinterface.h"
 #include "init.h"
@@ -315,9 +316,16 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                 __func__), REJECT_INVALID, "bad-tx");
 
     const Consensus::Params& consensus = Params().GetConsensus();
+    const CBlockIndex* pindexTip = chainActive.Tip();
+    const int chainHeight = pindexTip->nHeight;
+
+    // Check payload if this is a special tx
+    if (g_IsSaplingActive && !CheckSpecialTx(tx, state)) {
+        // error logged and DoS score raised
+        return false;
+    }
 
     // Check transaction
-    int chainHeight = chainActive.Height();
     bool fColdStakingActive = sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
     if (!CheckTransaction(tx, consensus.NetworkUpgradeActive(chainHeight, Consensus::UPGRADE_ZC),
             true, state, isBlockBetweenFakeSerialAttackRange(chainHeight), fColdStakingActive))
@@ -1293,6 +1301,11 @@ DisconnectResult DisconnectBlock(CBlock& block, CBlockIndex* pindex, CCoinsViewC
         return DISCONNECT_FAILED;
     }
 
+    // If the block contains special txes, undo the data from their extra payload
+    if (!UndoSpecialTxsInBlock(block, pindex->pprev)) {
+        return DISCONNECT_FAILED;
+    }
+
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
         const CTransaction& tx = *block.vtx[i];
@@ -1612,6 +1625,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     //IMPORTANT NOTE: Nothing before this point should actually store to disk (or even memory)
     if (fJustCheck)
         return true;
+
+    // If the block contains special txes, process the data from their extra payload
+    if (!ProcessSpecialTxsInBlock(block, pindex->pprev, state)) {
+        return false;
+    }
 
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull() || !pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
@@ -2702,6 +2720,14 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     int blockHeight = chainActive.Height() + 1;
     for (const auto& txIn : block.vtx) {
         const CTransaction& tx = *txIn;
+        // Check payload if this is a special tx
+        if (Params().GetConsensus().NetworkUpgradeActive(blockHeight, Consensus::UPGRADE_V5_DUMMY) &&
+                !CheckSpecialTx(tx, state)) {
+            return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
+                                 strprintf("Special Transaction check failed (tx hash %s) %s", tx.GetHash().ToString(), state.GetDebugMessage()));
+        }
+
+        // Check transaction
         if (!CheckTransaction(
                 tx,
                 fZerocoinActive,
@@ -2709,9 +2735,10 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                 state,
                 isBlockBetweenFakeSerialAttackRange(blockHeight),
                 fColdStakingActive
-        ))
+        )) {
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
-                                             strprintf("Transaction check failed (tx hash %s) %s", tx.GetHash().ToString(), state.GetDebugMessage()));
+                                 strprintf("Transaction check failed (tx hash %s) %s", tx.GetHash().ToString(), state.GetDebugMessage()));
+        }
 
         // double check that there are no double spent zPIV spends in this block
         if (tx.HasZerocoinSpendInputs()) {
