@@ -68,6 +68,9 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > nMaxSize)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
+    if (tx.vExtraPayload && tx.vExtraPayload->size() > MAX_TX_EXTRA_PAYLOAD)
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-payload-oversize");
+
     // Check for negative or overflow output values
     const Consensus::Params& consensus = Params().GetConsensus();
     CAmount nValueOut = 0;

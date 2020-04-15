@@ -173,6 +173,7 @@ BITCOIN_CORE_H = \
   consensus/zerocoin_verify.h \
   consensus/params.h \
   consensus/upgrades.h \
+  evo/specialtx.h \
   primitives/block.h \
   primitives/transaction.h \
   core_io.h \
@@ -308,6 +309,7 @@ libbitcoin_server_a_SOURCES = \
   consensus/params.cpp \
   consensus/tx_verify.cpp \
   consensus/zerocoin_verify.cpp \
+  evo/specialtx.cpp \
   httprpc.cpp \
   httpserver.cpp \
   init.cpp \
