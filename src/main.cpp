@@ -21,6 +21,7 @@
 #include "consensus/tx_verify.h"
 #include "consensus/validation.h"
 #include "consensus/zerocoin_verify.h"
+#include "evo/specialtx.h"
 #include "fs.h"
 #include "init.h"
 #include "kernel.h"
@@ -844,9 +845,15 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
                 __func__), REJECT_INVALID, "bad-tx");
 
     const Consensus::Params& consensus = Params().GetConsensus();
+    const CBlockIndex* pindexTip = chainActive.Tip();
+    const int chainHeight = pindexTip->nHeight;
+
+    // Check special transaction
+    if (tx.IsSpecialTx() && !CheckSpecialTx(tx, pindexTip, state)) {
+        return error("%s: reject invalid special transaction", __func__);
+    }
 
     // Check transaction
-    int chainHeight = chainActive.Height();
     bool fColdStakingActive = sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT);
     if (!CheckTransaction(tx, consensus.NetworkUpgradeActive(chainHeight, Consensus::UPGRADE_ZC),
             true, state, isBlockBetweenFakeSerialAttackRange(chainHeight), fColdStakingActive))
@@ -3407,6 +3414,11 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     // TODO: Check if this is ok... blockHeight is always the tip or should we look for the prevHash and get the height?
     int blockHeight = chainActive.Height() + 1;
     for (const CTransaction& tx : block.vtx) {
+        // Check special transaction
+        if (tx.IsSpecialTx() && !CheckSpecialTx(tx, pindexPrev, state)) {
+            return error("%s: Block %s contains an invalid special transaction", __func__, block.GetHash().GetHex());
+        }
+
         if (!CheckTransaction(
                 tx,
                 fZerocoinActive,

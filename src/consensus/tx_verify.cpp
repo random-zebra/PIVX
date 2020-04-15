@@ -68,6 +68,9 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > nMaxSize)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
+    if (tx.vExtraPayload.size() > MAX_TX_EXTRA_PAYLOAD)
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-payload-oversize");
+
     // Check for negative or overflow output values
     const Consensus::Params& consensus = Params().GetConsensus();
     CAmount nValueOut = 0;
@@ -124,6 +127,12 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
             if (!CheckZerocoinSpend(tx, fVerifySignature, state, fFakeSerialAttack))
                 return state.DoS(100, error("CheckTransaction() : invalid zerocoin spend"));
         }
+    }
+
+    // Only Special transactions can have type != 0
+    if (tx.nType != TxType::TRANSACTION_NORMAL && !tx.IsSpecialTx()) {
+        return state.DoS(100, error("%s : invalid tx type=%d with version=%d", __func__, tx.nType, tx.nVersion),
+            REJECT_INVALID, "bad-tx-type-version");
     }
 
     if (tx.IsCoinBase()) {
