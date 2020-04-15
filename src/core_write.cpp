@@ -158,6 +158,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 {
     entry.pushKV("txid", tx.GetHash().GetHex());
     entry.pushKV("version", tx.nVersion);
+    entry.pushKV("type", tx.nType);
     entry.pushKV("size", (int)::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
     entry.pushKV("locktime", (int64_t)tx.nLockTime);
 
@@ -195,6 +196,11 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         vout.push_back(out);
     }
     entry.pushKV("vout", vout);
+
+    if (!tx.vExtraPayload.empty()) {
+        entry.pushKV("extraPayloadSize", (int)tx.vExtraPayload.size());
+        entry.pushKV("extraPayload", HexStr(tx.vExtraPayload));
+    }
 
     if (!hashBlock.IsNull())
         entry.pushKV("blockhash", hashBlock.GetHex());
