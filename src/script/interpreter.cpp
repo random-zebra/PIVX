@@ -1071,7 +1071,8 @@ public:
     template<typename S>
     void Serialize(S &s) const {
         // Serialize nVersion
-        ::Serialize(s, txTo.nVersion);
+        int32_t n32bitVersion = txTo.nVersion | (txTo.nType << 16);
+        ::Serialize(s, n32bitVersion);
         // Serialize vin
         unsigned int nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
         ::WriteCompactSize(s, nInputs);
@@ -1221,6 +1222,7 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
         // Outputs (none/one/all, depending on flags)
         ss << hashOutputs;
 
+        // Serialize Sapling Data if present
         if (hasSapData) {
             // Spend descriptions
             ss << hashShieldedSpends;
@@ -1228,6 +1230,11 @@ uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsig
             ss << hashShieldedOutputs;
             // Sapling value balance
             ss << txTo.sapData->valueBalance;
+        }
+
+        // Serialize Extra Payload if present
+        if (txTo.vExtraPayload && !txTo.vExtraPayload->empty()) {
+            ss << *(txTo.vExtraPayload);
         }
 
         if (nIn != NOT_AN_INPUT) {
