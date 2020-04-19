@@ -93,7 +93,7 @@ void static RandomScript(CScript &script) {
 }
 
 void static RandomTransaction(CMutableTransaction &tx, bool fSingle) {
-    tx.nVersion = InsecureRand32();
+    tx.nVersion = 1; //todo: Include Sapling transaction support.
     tx.vin.clear();
     tx.vout.clear();
     tx.nLockTime = (InsecureRandBool()) ? InsecureRand32() : 0;
