@@ -1126,14 +1126,26 @@ PrecomputedTransactionData::PrecomputedTransactionData(const CTransaction& txTo)
     hashOutputs = GetOutputsHash(txTo);
 }
 
-uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache)
+SigVersion SignatureHashVersion(const CTransaction& txTo)
+{
+    if (txTo.isSapling()) {
+        return SIGVERSION_SAPLING;
+    } else {
+        return SIGVERSION_BASE;
+    }
+}
+
+uint256 SignatureHash(const CScript& scriptCode, const CTransaction& txTo, unsigned int nIn, int nHashType, const CAmount& amount, const PrecomputedTransactionData* cache)
 {
     if (nIn >= txTo.vin.size()) {
         //  nIn out of range
         return UINT256_ONE;
     }
 
-    if (sigversion == SIGVERSION_WITNESS_V0) {
+    // Get the sigversion from the tx directly
+    SigVersion sigversion = SignatureHashVersion(txTo);
+
+    if (sigversion == SIGVERSION_SAPLING) {
 
         uint256 hashPrevouts;
         uint256 hashSequence;
@@ -1219,7 +1231,7 @@ bool TransactionSignatureChecker::CheckSig(const std::vector<unsigned char>& vch
     int nHashType = vchSig.back();
     vchSig.pop_back();
 
-    uint256 sighash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion, this->precomTxData);
+    uint256 sighash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, this->precomTxData);
 
     if (!VerifySignature(vchSig, pubkey, sighash))
         return false;

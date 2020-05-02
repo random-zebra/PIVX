@@ -26,7 +26,7 @@ bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, 
 
     uint256 hash;
     try {
-        hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion);
+        hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount);
     } catch (std::logic_error ex) {
         return false;
     }
