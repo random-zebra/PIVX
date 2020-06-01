@@ -108,6 +108,7 @@ BITCOIN_CORE_H = \
   consensus/params.h \
   consensus/upgrades.h \
   evo/evodb.h \
+  evo/providertx.h \
   evo/specialtx.h \
   primitives/block.h \
   primitives/transaction.h \
@@ -239,6 +240,7 @@ libbitcoin_server_a_SOURCES = \
   consensus/tx_verify.cpp \
   consensus/zerocoin_verify.cpp \
   evo/evodb.cpp \
+  evo/providertx.cpp \
   evo/specialtx.cpp \
   httprpc.cpp \
   httpserver.cpp \

@@ -9,6 +9,7 @@
 #include "chainparams.h"
 #include "clientversion.h"
 #include "consensus/validation.h"
+#include "evo/providertx.h"
 #include "primitives/block.h"
 
 
@@ -20,7 +21,8 @@ bool CheckSpecialTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CVali
     }
 
     switch (tx.nType) {
-    /* tx-type checking */
+        case TRANSACTION_PROVIDER_REGISTER:
+            return CheckProRegTx(tx, state);
     }
 
     return state.DoS(10, error("%s : special tx with invalid type %d",

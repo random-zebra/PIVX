@@ -473,6 +473,7 @@ set(COMMON_SOURCES
         ./src/consensus/tx_verify.cpp
         ./src/consensus/zerocoin_verify.cpp
         ./src/evo/evodb.cpp
+        ./src/evo/providertx.cpp
         ./src/evo/specialtx.cpp
         ./src/primitives/block.cpp
         ./src/zpiv/deterministicmint.cpp
