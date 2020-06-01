@@ -7,6 +7,7 @@
 
 #include "test_pivx.h"
 
+#include "evo/evodb.h"
 #include "main.h"
 #include "random.h"
 #include "script/sigcache.h"
@@ -43,6 +44,7 @@ TestingSetup::TestingSetup()
         pathTemp = GetTempPath() / strprintf("test_pivx_%lu_%i", (unsigned long)GetTime(), (int)(InsecureRandRange(100000)));
         fs::create_directories(pathTemp);
         mapArgs["-datadir"] = pathTemp.string();
+        evoDb = new CEvoDB(1 << 20, true, true);
         pblocktree = new CBlockTreeDB(1 << 20, true);
         pcoinsdbview = new CCoinsViewDB(1 << 23, true);
         pcoinsTip = new CCoinsViewCache(pcoinsdbview);
@@ -67,6 +69,7 @@ TestingSetup::~TestingSetup()
         delete pcoinsTip;
         delete pcoinsdbview;
         delete pblocktree;
+        delete evoDb;
         fs::remove_all(pathTemp);
 }
 

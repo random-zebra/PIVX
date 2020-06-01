@@ -20,6 +20,7 @@
 #include "checkpoints.h"
 #include "compat/sanity.h"
 #include "consensus/zerocoin_verify.h"
+#include "evo/evodb.h"
 #include "fs.h"
 #include "httpserver.h"
 #include "httprpc.h"
@@ -249,6 +250,8 @@ void PrepareShutdown()
         zerocoinDB = NULL;
         delete pSporkDB;
         pSporkDB = NULL;
+        delete evoDb;
+        evoDb = NULL;
     }
 #ifdef ENABLE_WALLET
     if (pwalletMain)
@@ -1453,6 +1456,7 @@ bool AppInit2()
     int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
     nTotalCache -= nCoinDBCache;
     nCoinCacheUsage = nTotalCache; // the rest goes to in-memory cache
+    int64_t nEvoDbCache = 1024 * 1024 * 16; // TODO
     LogPrintf("Cache configuration:\n");
     LogPrintf("* Using %.1fMiB for block index database\n", nBlockTreeDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
@@ -1476,10 +1480,12 @@ bool AppInit2()
                 delete pblocktree;
                 delete zerocoinDB;
                 delete pSporkDB;
+                delete evoDb;
 
-                //PIVX specific: zerocoin and spork DB's
+                //PIVX specific: zerocoin, spork and evo DB's
                 zerocoinDB = new CZerocoinDB(0, false, fReindex);
                 pSporkDB = new CSporkDB(0, false, false);
+                evoDb = new CEvoDB(nEvoDbCache, false, fReindex);
 
                 pblocktree = new CBlockTreeDB(nBlockTreeDBCache, false, fReindex);
                 pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);
