@@ -205,7 +205,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         }
         if (tx.hasExtraPayload()) {
             entry.pushKV("extraPayloadSize", (int)tx.vExtraPayload->size());
-            entry.pushKV("extraPayload", HexStr(*(tx.vExtraPayload)));
+            entry.pushKV("extraPayloadHex", HexStr(*(tx.vExtraPayload)));
         }
     }
 

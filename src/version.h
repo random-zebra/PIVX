@@ -39,5 +39,11 @@ static const int MEMPOOL_GD_VERSION = 60002;
 //! "filter*" commands are disabled without NODE_BLOOM after and including this version
 static const int NO_BLOOM_VERSION = 70005;
 
+//! minimum ProTx proto version
+static const int MIN_PROTX_PROTO_VERSION = 70920;
+
+//! maximum ProTx proto version (slightly higher then current PROTOCOL_VERSION to ensure masternodes can upgrade)
+static const int MAX_PROTX_PROTO_VERSION = PROTOCOL_VERSION + 2;
+
 
 #endif // BITCOIN_VERSION_H

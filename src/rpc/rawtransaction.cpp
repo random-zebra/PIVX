@@ -9,6 +9,7 @@
 #include "core_io.h"
 #include "init.h"
 #include "keystore.h"
+#include "evo/providertx.h"
 #include "net.h"
 #include "policy/policy.h"
 #include "primitives/transaction.h"
@@ -80,6 +81,17 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
                 entry.pushKV("confirmations", 0);
         }
     }
+
+    // Add extra payload JSON for special transactions
+    if (tx.hasExtraPayload()) {
+        switch(tx.nType) {
+        case TxType::TRANSACTION_PROVIDER_REGISTER:
+            CProRegPL prpl;
+            if (tx.GetPayload(prpl)) {
+                entry.pushKV("extraPayload", prpl.ToJSON());
+            }
+        }
+    }
 }
 
 UniValue getrawtransaction(const JSONRPCRequest& request)
@@ -141,15 +153,16 @@ UniValue getrawtransaction(const JSONRPCRequest& request)
             "     }\n"
             "     ,...\n"
             "  ],\n"
-            "  \"shielded_balance\" : x.xxx, (numeric) Positive or negative shielded value in PIV. Only present for sapling txes\n"
-            "  \"shielded_spends\" : n,      (numeric) Number of shielded inputs spent by the tx. Only present for sapling txes\n"
-            "  \"shielded_outputs\" : n,     (numeric) Number of shielded outputs created by the tx. Only present for sapling txes\n"
-            "  \"extraPayloadSize\" : n,     (numeric) Size of extra payload. Only present if it's a special TX\n"
-            "  \"extraPayload\" : \"hex\",   (string) Hex encoded extra payload data. Only present if it's a special TX\n"
-            "  \"blockhash\" : \"hash\",     (string) the block hash\n"
-            "  \"confirmations\" : n,        (numeric) The confirmations\n"
-            "  \"time\" : ttt,               (numeric) The transaction time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "  \"blocktime\" : ttt           (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
+            "  \"shielded_balance\" : x.xxx,  (numeric) Positive or negative shielded value in PIV. Only present for sapling txes\n"
+            "  \"shielded_spends\" : n,       (numeric) Number of shielded inputs spent by the tx. Only present for sapling txes\n"
+            "  \"shielded_outputs\" : n,      (numeric) Number of shielded outputs created by the tx. Only present for sapling txes\n"
+            "  \"extraPayloadSize\" : n,      (numeric) Size of extra payload. Only present if it's a special TX\n"
+            "  \"extraPayloadHex\" : \"hex\", (string) Hex encoded extra payload data. Only present if it's a special TX\n"
+            "  \"extraPayload\" : {...},      (string) Decoded JSON object for extra payload if present.\n"
+            "  \"blockhash\" : \"hash\",      (string) the block hash\n"
+            "  \"confirmations\" : n,         (numeric) The confirmations\n"
+            "  \"time\" : ttt,                (numeric) The transaction time in seconds since epoch (Jan 1 1970 GMT)\n"
+            "  \"blocktime\" : ttt            (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
             "}\n"
 
             "\nExamples:\n"
@@ -355,11 +368,12 @@ UniValue decoderawtransaction(const JSONRPCRequest& request)
             "     }\n"
             "     ,...\n"
             "  ],\n"
-            "  \"shielded_balance\" : x.xxx, (numeric) Positive or negative shielded value in PIV. Only present for sapling txes\n"
-            "  \"shielded_spends\" : n,      (numeric) Number of shielded inputs spent by the tx. Only present for sapling txes\n"
-            "  \"shielded_outputs\" : n,     (numeric) Number of shielded outputs created by the tx. Only present for sapling txes\n"
-            "  \"extraPayloadSize\" : n,     (numeric) Size of extra payload. Only present if it's a special TX\n"
-            "  \"extraPayload\" : \"hex\",   (string) Hex encoded extra payload data. Only present if it's a special TX\n"
+            "  \"shielded_balance\" : x.xxx,  (numeric) Positive or negative shielded value in PIV. Only present for sapling txes\n"
+            "  \"shielded_spends\" : n,       (numeric) Number of shielded inputs spent by the tx. Only present for sapling txes\n"
+            "  \"shielded_outputs\" : n,      (numeric) Number of shielded outputs created by the tx. Only present for sapling txes\n"
+            "  \"extraPayloadSize\" : n,      (numeric) Size of extra payload. Only present if it's a special TX\n"
+            "  \"extraPayloadHex\" : \"hex\", (string) Hex encoded extra payload data. Only present if it's a special TX\n"
+            "  \"extraPayload\" : {...},      (string) Decoded JSON object for extra payload if present.\n"
             "}\n"
 
             "\nExamples:\n" +

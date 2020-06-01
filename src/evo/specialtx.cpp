@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Dash Core developers
+// Copyright (c) 2017-2019 The Dash Core developers
 // Copyright (c) 2020 The PIVX Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -9,6 +9,7 @@
 #include "chainparams.h"
 #include "clientversion.h"
 #include "consensus/validation.h"
+#include "evo/providertx.h"
 #include "primitives/block.h"
 
 
@@ -25,7 +26,8 @@ bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
     }
 
     switch (tx.nType) {
-    /* per-tx-type checking */
+    case TRANSACTION_PROVIDER_REGISTER:
+        return CheckProRegPL(tx, state);
     }
 
     return state.DoS(10, error("%s : special tx %s with invalid type %d",

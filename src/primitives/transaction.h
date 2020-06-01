@@ -28,6 +28,7 @@ extern std::atomic<bool> g_IsSaplingActive;
 /** Transaction types */
 enum TxType {
     TRANSACTION_NORMAL = 0,
+    TRANSACTION_PROVIDER_REGISTER = 1,
 };
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
