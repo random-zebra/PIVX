@@ -136,15 +136,13 @@ std::string CWallet::MintZerocoin(CAmount nValue, CWalletTx& wtxNew, std::vector
     }
 
     //commit the transaction to the network
-    if (!CommitTransaction(wtxNew, reservekey)) {
-        return _("Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
-    } else {
-        //update mints with full transaction hash and then database them
-        CWalletDB walletdb(strWalletFile);
-        for (CDeterministicMint dMint : vDMints) {
-            dMint.SetTxHash(wtxNew.GetHash());
-            zpivTracker->Add(dMint, true);
-        }
+    CommitTransaction(wtxNew, reservekey);
+
+    //update mints with full transaction hash and then database them
+    CWalletDB walletdb(strWalletFile);
+    for (CDeterministicMint dMint : vDMints) {
+        dMint.SetTxHash(wtxNew.GetHash());
+        zpivTracker->Add(dMint, true);
     }
 
     return "";
@@ -317,39 +315,7 @@ bool CWallet::SpendZerocoin(CAmount nAmount, CWalletTx& wtxNew, CZerocoinSpendRe
         return false;
     }
 
-
-    CWalletDB walletdb(strWalletFile);
-    if (!CommitTransaction(wtxNew, reserveKey)) {
-        LogPrintf("%s: failed to commit\n", __func__);
-        nStatus = ZPIV_COMMIT_FAILED;
-
-        //reset all mints
-        for (CZerocoinMint mint : vMintsSelected) {
-            uint256 hashPubcoin = GetPubCoinHash(mint.GetValue());
-            zpivTracker->SetPubcoinNotUsed(hashPubcoin);
-            NotifyZerocoinChanged(this, mint.GetValue().GetHex(), "New", CT_UPDATED);
-        }
-
-        //erase spends
-        for (CZerocoinSpend spend : receipt.GetSpends()) {
-            if (!walletdb.EraseZerocoinSpendSerialEntry(spend.GetSerial())) {
-                receipt.SetStatus("Error: It cannot delete coin serial number in wallet", ZPIV_ERASE_SPENDS_FAILED);
-            }
-
-            //Remove from public zerocoinDB
-            RemoveSerialFromDB(spend.GetSerial());
-        }
-
-        // erase new mints
-        for (auto& dMint : vNewMints) {
-            if (!walletdb.EraseDeterministicMint(dMint.GetPubcoinHash())) {
-                receipt.SetStatus("Error: Unable to cannot delete zerocoin mint in wallet", ZPIV_ERASE_NEW_MINTS_FAILED);
-            }
-        }
-
-        receipt.SetStatus("Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.", nStatus);
-        return false;
-    }
+    CommitTransaction(wtxNew, reserveKey);
 
     //Set spent mints as used
     uint256 txidSpend = wtxNew.GetHash();

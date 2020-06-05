@@ -129,7 +129,7 @@ class PIVX_ColdStakingTest(PivxTestFramework):
         # Check that SPORK 17 is disabled
         assert (not self.isColdStakingEnforced())
         self.log.info("Creating a stake-delegation tx before cold staking enforcement...")
-        assert_raises_rpc_error(-4, "The transaction was rejected!",
+        assert_raises_rpc_error(-26, "Cold-Staking disabled by SPORK 17",
                                 self.nodes[0].delegatestake, staker_address, INPUT_VALUE, owner_address, False, False, True)
         self.log.info("Good. Cold Staking NOT ACTIVE yet.")
 

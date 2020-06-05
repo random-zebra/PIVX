@@ -771,8 +771,8 @@ void SendMoney(const CTxDestination& address, CAmount nValue, CWalletTx& wtxNew,
         LogPrintf("SendMoney() : %s\n", strError);
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
-    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, (!fUseIX ? NetMsgType::TX : NetMsgType::IX)))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+
+    pwalletMain->CommitTransaction(wtxNew, reservekey, (!fUseIX ? NetMsgType::TX : NetMsgType::IX));
 }
 
 UniValue sendtoaddress(const UniValue& params, bool fHelp)
@@ -946,14 +946,16 @@ UniValue delegatestake(const UniValue& params, bool fHelp)
             HelpExampleCli("delegatestake", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\" 1000 \"DMJRSsuU9zfyrvxVaAEFQqK4MxZg34fk\"") +
             HelpExampleRpc("delegatestake", "\"S1t2a3kab9c8c71VA78xxxy4MxZg6vgeS6\", 1000, \"DMJRSsuU9zfyrvxVaAEFQqK4MxZg34fk\""));
 
+    if (!sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT))
+        throw JSONRPCError(RPC_VERIFY_REJECTED, "Cold-Staking disabled by SPORK 17");
+
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     CWalletTx wtx;
     CReserveKey reservekey(pwalletMain);
     UniValue ret = CreateColdStakeDelegation(params, wtx, reservekey);
 
-    if (!pwalletMain->CommitTransaction(wtx, reservekey, NetMsgType::TX))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+    pwalletMain->CommitTransaction(wtx, reservekey, NetMsgType::TX);
 
     ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
     return ret;
@@ -1686,8 +1688,8 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, strFailReason);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-    if (!pwalletMain->CommitTransaction(wtx, keyChange))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
+
+    pwalletMain->CommitTransaction(wtx, keyChange);
 
     return wtx.GetHash().GetHex();
 }

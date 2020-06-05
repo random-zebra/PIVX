@@ -2743,7 +2743,7 @@ bool CWallet::CreateCoinStake(
 /**
  * Call after CreateTransaction unless you want to abort
  */
-bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std::string strCommand)
+void CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std::string strCommand)
 {
     {
         LOCK2(cs_main, cs_wallet);
@@ -2790,7 +2790,6 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std:
             wtxNew.RelayWalletTransaction(strCommand);
         }
     }
-    return true;
 }
 
 bool CWallet::AddAccountingEntry(const CAccountingEntry& acentry, CWalletDB & pwalletdb)
@@ -3449,11 +3448,7 @@ void CWallet::AutoCombineDust()
         if (!maxSize && nTotalRewardsValue < nAutoCombineThreshold * COIN && nFeeRet > 0)
             continue;
 
-        if (!CommitTransaction(wtx, keyChange)) {
-            LogPrintf("AutoCombineDust transaction commit failed\n");
-            continue;
-        }
-
+        CommitTransaction(wtx, keyChange);
         LogPrintf("AutoCombineDust sent transaction\n");
 
         delete coinControl;
@@ -3552,11 +3547,8 @@ bool CWallet::MultiSend()
             return false;
         }
 
-        if (!CommitTransaction(wtx, keyChange)) {
-            LogPrintf("MultiSend transaction commit failed\n");
-            return false;
-        } else
-            fMultiSendNotify = true;
+        fMultiSendNotify = true;
+        CommitTransaction(wtx, keyChange);
 
         //write nLastMultiSendHeight to DB
         CWalletDB walletdb(strWalletFile);

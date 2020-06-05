@@ -578,8 +578,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
         }
 
         CReserveKey* keyChange = transaction.getPossibleKeyChange();
-        if (!wallet->CommitTransaction(*newTx, *keyChange, (recipients[0].useSwiftTX) ? NetMsgType::IX : NetMsgType::TX))
-            return TransactionCommitFailed;
+        wallet->CommitTransaction(*newTx, *keyChange, (recipients[0].useSwiftTX) ? NetMsgType::IX : NetMsgType::TX);
 
         CTransaction* t = (CTransaction*)newTx;
         CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
