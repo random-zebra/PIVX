@@ -2782,11 +2782,11 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std:
 
         // Broadcast
         if (!wtxNew.AcceptToMemoryPool(false)) {
-            // This must not fail. The transaction has already been signed and recorded.
-            LogPrintf("CommitTransaction() : Error: Transaction not valid\n");
-            return false;
+            LogPrintf("%s: Transaction cannot be broadcast immediately.\n", __func__);
+            // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
+        } else {
+            wtxNew.RelayWalletTransaction(strCommand);
         }
-        wtxNew.RelayWalletTransaction(strCommand);
     }
     return true;
 }
