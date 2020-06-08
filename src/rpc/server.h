@@ -308,6 +308,8 @@ extern UniValue verifymessage(const JSONRPCRequest& request);
 extern UniValue setmocktime(const JSONRPCRequest& request);
 extern UniValue getstakingstatus(const JSONRPCRequest& request);
 
+extern UniValue protx_register(const UniValue& params, bool fHelp); // in rpc/rpcevo.cpp
+
 bool StartRPC();
 void InterruptRPC();
 void StopRPC();

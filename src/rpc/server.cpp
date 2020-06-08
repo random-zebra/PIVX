@@ -385,6 +385,8 @@ static const CRPCCommand vRPCCommands[] =
         {"pivx", "checkbudgets", &checkbudgets, true },
         {"pivx", "mnsync", &mnsync, true },
         {"pivx", "spork", &spork, true },
+        {"pivx", "protx_register", &protx_register, false},    // evo features
+
 
 #ifdef ENABLE_WALLET
         /* Wallet */
