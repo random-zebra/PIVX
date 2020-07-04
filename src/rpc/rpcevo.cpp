@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "base58.h"
+#include "evo/specialtx.h"
 #include "key.h"
 #include "evo/specialtx.h"
 #include "messagesigner.h"
