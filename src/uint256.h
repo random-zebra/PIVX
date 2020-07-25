@@ -119,11 +119,6 @@ inline uint512 uint512S(const std::string& str)
     return rv;
 }
 
-uint256 ArithToUint256(const arith_uint256 &);
-arith_uint256 UintToArith256(const uint256 &);
-uint512 ArithToUint512(const arith_uint512 &);
-arith_uint512 UintToArith512(const uint512 &);
-
 /** constant uint256 instances */
 const uint256 UINT256_ZERO = uint256();
 const uint256 UINT256_ONE = uint256("0000000000000000000000000000000000000000000000000000000000000001");

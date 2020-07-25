@@ -431,6 +431,7 @@ libbitcoin_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_util_a_SOURCES = \
   arith_uint256.cpp \
   allocators.cpp \
+  blob_uint256.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
   compat/glibc_sanity.cpp \
@@ -443,7 +444,6 @@ libbitcoin_util_a_SOURCES = \
   support/cleanse.cpp \
   sync.cpp \
   uint256.cpp \
-  blob_uint256.cpp \
   util.cpp \
   utilmoneystr.cpp \
   util/threadnames.cpp \
@@ -537,6 +537,7 @@ include_HEADERS = script/bitcoinconsensus.h
 libbitcoinconsensus_la_SOURCES = \
   arith_uint256.cpp \
   allocators.cpp \
+  blob_uint256.cpp \
   primitives/transaction.cpp \
   crypto/hmac_sha512.cpp \
   crypto/scrypt.cpp \
@@ -550,7 +551,6 @@ libbitcoinconsensus_la_SOURCES = \
   script/interpreter.cpp \
   script/bitcoinconsensus.cpp \
   uint256.cpp \
-  blob_uint256.cpp \
   utilstrencodings.cpp
 
 if GLIBC_BACK_COMPAT
