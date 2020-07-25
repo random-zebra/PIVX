@@ -8,6 +8,7 @@
 #ifndef PIVX_HASH_H
 #define PIVX_HASH_H
 
+#include "arith_uint256.h"
 #include "crypto/ripemd160.h"
 #include "crypto/sha256.h"
 #include "prevector.h"
@@ -341,10 +342,10 @@ inline uint256 HashQuark(const T1 pbegin, const T1 pend)
     sph_skein512_context ctx_skein;
     static unsigned char pblank[1];
 
-    uint512 mask = 8;
-    uint512 zero = 0;
+    arith_uint512 mask = 8;
+    arith_uint512 zero = 0;
 
-    uint512 hash[9];
+    arith_uint512 hash[9];
 
     sph_blake512_init(&ctx_blake);
     // ZBLAKE;
@@ -411,7 +412,8 @@ inline uint256 HashQuark(const T1 pbegin, const T1 pend)
         sph_jh512(&ctx_jh, static_cast<const void*>(&hash[7]), 64);
         sph_jh512_close(&ctx_jh, static_cast<void*>(&hash[8]));
     }
-    return hash[8].trim256();
+
+    return ArithToUint512(hash[8]).trim256();
 }
 
 void scrypt_hash(const char* pass, unsigned int pLen, const char* salt, unsigned int sLen, char* output, unsigned int N, unsigned int r, unsigned int p, unsigned int dkLen);
