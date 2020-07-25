@@ -60,13 +60,13 @@ uint256 CStakeKernel::GetHash() const
 bool CStakeKernel::CheckKernelHash(bool fSkipLog) const
 {
     // Get weighted target
-    uint256 bnTarget;
+    arith_uint256 bnTarget;
     bnTarget.SetCompact(nBits);
-    bnTarget *= (uint256(stakeValue) / 100);
+    bnTarget *= (arith_uint256(stakeValue) / 100);
 
     // Check PoS kernel hash
     const uint256& hashProofOfStake = GetHash();
-    const bool res = hashProofOfStake < bnTarget;
+    const bool res = UintToArith256(hashProofOfStake) < bnTarget;
 
     if (!fSkipLog || res) {
         LogPrint(BCLog::STAKING, "%s : Proof Of Stake:"
