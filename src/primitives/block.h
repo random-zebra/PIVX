@@ -30,7 +30,7 @@ public:
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce;
-    uint256 nAccumulatorCheckpoint;             // only for version 4, 5 and 6.
+    arith_uint256 nAccumulatorCheckpoint;             // only for version 4, 5 and 6.
 
     CBlockHeader()
     {

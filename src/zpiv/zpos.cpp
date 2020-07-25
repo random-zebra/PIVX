@@ -12,7 +12,7 @@
  * Return block index pointer or nullptr if not found
  */
 
-uint32_t ParseAccChecksum(uint256 nCheckpoint, const libzerocoin::CoinDenomination denom)
+uint32_t ParseAccChecksum(arith_uint256 nCheckpoint, const libzerocoin::CoinDenomination denom)
 {
     int pos = std::distance(libzerocoin::zerocoinDenomList.begin(),
             find(libzerocoin::zerocoinDenomList.begin(), libzerocoin::zerocoinDenomList.end(), denom));
