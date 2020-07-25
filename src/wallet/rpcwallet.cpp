@@ -524,8 +524,6 @@ UniValue delegatoradd(const JSONRPCRequest& request)
     const std::string strLabel = (request.params.size() > 1 ? request.params[1].get_str() : "");
 
     CKeyID keyID = boost::get<CKeyID>(DecodeDestination(request.params[0].get_str()));
-    if (!keyID)
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unable to get KeyID from PIVX address");
 
     return pwalletMain->SetAddressBook(keyID, strLabel, AddressBook::AddressBookPurpose::DELEGATOR);
 }
@@ -554,8 +552,6 @@ UniValue delegatorremove(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid PIVX address");
 
     CKeyID keyID = *boost::get<CKeyID>(&dest);
-    if (!keyID)
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unable to get KeyID from PIVX address");
 
     if (!pwalletMain->HasAddressBook(keyID))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unable to get PIVX address from addressBook");
@@ -996,8 +992,7 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
         if (!IsValidDestination(dest) || isStaking)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid PIVX spending address");
         ownerKey = *boost::get<CKeyID>(&dest);
-        if (!ownerKey)
-            throw JSONRPCError(RPC_WALLET_ERROR, "Unable to get spend pubkey hash from owneraddress");
+
         // Check that the owner address belongs to this wallet, or fForceExternalAddr is true
         bool fForceExternalAddr = params.size() > 3 && !params[3].isNull() ? params[3].get_bool() : false;
         if (!fForceExternalAddr && !pwalletMain->HaveKey(ownerKey)) {
@@ -1012,8 +1007,8 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
         // Get new owner address from keypool
         CTxDestination ownerAddr = GetNewAddressFromLabel("delegated", NullUniValue);
         ownerKey = *boost::get<CKeyID>(&ownerAddr);
-        if (!ownerKey)
-            throw JSONRPCError(RPC_WALLET_ERROR, "Unable to get spend pubkey hash from owneraddress");
+        if (!IsValidDestination(ownerAddr))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Invalid owner address");
         ownerAddressStr = EncodeDestination(ownerAddr);
     }
 
@@ -1284,9 +1279,6 @@ UniValue signmessage(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
     CKeyID keyID = *boost::get<CKeyID>(&dest);
-    if (!keyID)
-        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
-
     CKey key;
     if (!pwalletMain->GetKey(keyID, key))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");

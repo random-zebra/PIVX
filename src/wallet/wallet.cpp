@@ -642,12 +642,12 @@ bool CWallet::GetVinAndKeysFromOutput(COutput out, CTxIn& txinRet, CPubKey& pubK
     CTxDestination address1;
     ExtractDestination(pubScript, address1, fColdStake);
 
-    CKeyID* keyID = boost::get<CKeyID>(&address1);
-    if (!keyID) {
-        LogPrintf("CWallet::GetVinAndKeysFromOutput -- Address does not refer to a key\n");
+    if (!IsValidDestination(address1)) {
+        LogPrintf("CWallet::GetVinAndKeysFromOutput -- Invalid Address\n");
         return false;
     }
 
+    CKeyID* keyID = boost::get<CKeyID>(&address1);
     if (!GetKey(*keyID, keyRet)) {
         LogPrintf("CWallet::GetVinAndKeysFromOutput -- Private key for address is not known\n");
         return false;

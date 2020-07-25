@@ -150,14 +150,6 @@ void SettingsBitToolWidget::onEncryptKeyButtonENCClicked()
         return;
     }
 
-    CKeyID keyID = *boost::get<CKeyID>(&dest);
-    if (!keyID) {
-        //ui->addressIn_ENC->setValid(false);
-        ui->statusLabel_ENC->setStyleSheet("QLabel { color: red; }");
-        ui->statusLabel_ENC->setText(tr("The entered address does not refer to a key.") + QString(" ") + tr("Please check the address and try again."));
-        return;
-    }
-
     WalletModel::UnlockContext ctx(walletModel->requestUnlock());
     if (!ctx.isValid()) {
         ui->statusLabel_ENC->setStyleSheet("QLabel { color: red; }");
@@ -165,6 +157,7 @@ void SettingsBitToolWidget::onEncryptKeyButtonENCClicked()
         return;
     }
 
+    CKeyID keyID = *boost::get<CKeyID>(&dest);
     CKey key;
     if (!pwalletMain->GetKey(keyID, key)) {
         ui->statusLabel_ENC->setStyleSheet("QLabel { color: red; }");

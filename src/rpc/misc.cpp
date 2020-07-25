@@ -436,10 +436,6 @@ CScript _createmultisig_redeemScript(const UniValue& params)
         CTxDestination dest = DecodeDestination(ks);
         if (pwalletMain && IsValidDestination(dest)) {
             const CKeyID* keyID = boost::get<CKeyID>(&dest);
-            if (!keyID) {
-                throw std::runtime_error(
-                        strprintf("%s does not refer to a key", ks));
-            }
             CPubKey vchPubKey;
             if (!pwalletMain->GetPubKey(*keyID, vchPubKey))
                 throw std::runtime_error(
@@ -545,10 +541,6 @@ UniValue verifymessage(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
     const CKeyID* keyID = boost::get<CKeyID>(&destination);
-    if (!keyID) {
-        throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
-    }
-
     bool fInvalid = false;
     std::vector<unsigned char> vchSig = DecodeBase64(strSign.c_str(), &fInvalid);
 

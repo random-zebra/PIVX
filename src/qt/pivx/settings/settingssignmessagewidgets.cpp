@@ -164,14 +164,6 @@ void SettingsSignMessageWidgets::onSignMessageButtonSMClicked()
         ui->statusLabel_SM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
         return;
     }
-    const CKeyID* keyID = boost::get<CKeyID>(&addr);
-    if (!keyID) {
-        // TODO: change css..
-        //ui->addressIn_SM->setValid(false);
-        ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
-        ui->statusLabel_SM->setText(tr("The entered address does not refer to a key.") + QString(" ") + tr("Please check the address and try again."));
-        return;
-    }
 
     WalletModel::UnlockContext ctx(walletModel->requestUnlock());
     if (!ctx.isValid()) {
@@ -180,6 +172,7 @@ void SettingsSignMessageWidgets::onSignMessageButtonSMClicked()
         return;
     }
 
+    const CKeyID* keyID = boost::get<CKeyID>(&addr);
     CKey key;
     if (!pwalletMain->GetKey(*keyID, key)) {
         ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
@@ -220,13 +213,6 @@ void SettingsSignMessageWidgets::onVerifyMessage()
         return;
     }
     const CKeyID* keyID = boost::get<CKeyID>(&addr);
-    if (!keyID) {
-        //ui->addressIn_SM->setValid(false);
-        ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
-        ui->statusLabel_SM->setText(tr("The entered address does not refer to a key.") + QString(" ") + tr("Please check the address and try again."));
-        return;
-    }
-
     bool fInvalid = false;
     std::vector<unsigned char> vchSig = DecodeBase64(ui->signatureOut_SM->text().toStdString().c_str(), &fInvalid);
 
