@@ -41,7 +41,7 @@ void ComputePreFactor(std::string strPassphrase, std::string strSalt, uint256& p
 void ComputePassfactor(std::string ownersalt, uint256 prefactor, uint256& passfactor)
 {
     //concat prefactor and ownersalt
-    uint512 temp(ReverseEndianString(HexStr(prefactor) + ownersalt));
+    uint512 temp = uint512S(ReverseEndianString(HexStr(prefactor) + ownersalt).c_str());
     Hash(temp.begin(), 40, passfactor.begin()); //40 bytes is the length of prefactor + salt
     Hash(passfactor.begin(), 32, passfactor.begin());
 }

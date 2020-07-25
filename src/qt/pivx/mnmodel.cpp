@@ -27,7 +27,7 @@ void MNModel::updateMNList()
         if (!mne.castOutputIndex(nIndex))
             continue;
 
-        uint256 txHash(mne.getTxHash());
+        const uint256& txHash = uint256S(mne.getTxHash());
         CTxIn txIn(txHash, uint32_t(nIndex));
         CMasternode* pmn = mnodeman.Find(txIn);
         if (!pmn) {

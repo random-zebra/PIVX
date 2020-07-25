@@ -187,7 +187,7 @@ static void MutateTxAddInput(CMutableTransaction& tx, const std::string& strInpu
     std::string strTxid = strInput.substr(0, pos);
     if ((strTxid.size() != 64) || !IsHex(strTxid))
         throw std::runtime_error("invalid TX input txid");
-    uint256 txid(strTxid);
+    const uint256& txid = uint256S(strTxid);
 
     static const unsigned int minTxOutSz = 9;
     unsigned int nMaxSize = MAX_BLOCK_SIZE_LEGACY;
