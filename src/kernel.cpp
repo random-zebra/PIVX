@@ -72,11 +72,12 @@ bool CStakeKernel::CheckKernelHash(bool fSkipLog) const
         LogPrint(BCLog::STAKING, "%s : Proof Of Stake:"
                             "\nssUniqueID=%s"
                             "\nnTimeTx=%d"
+                            "\nstakeModifier=%s"
                             "\nhashProofOfStake=%s"
                             "\nnBits=%d"
                             "\nweight=%d"
                             "\nbnTarget=%s (res: %d)\n\n",
-            __func__, HexStr(stakeUniqueness), nTime, hashProofOfStake.GetHex(),
+            __func__, HexStr(stakeUniqueness), nTime, HexStr(stakeModifier), hashProofOfStake.GetHex(),
             nBits, stakeValue, bnTarget.GetHex(), res);
     }
     return res;

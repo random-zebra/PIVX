@@ -517,7 +517,6 @@ set(UTIL_SOURCES
         ./src/rpc/protocol.cpp
         ./src/sync.cpp
         ./src/arith_uint256.cpp
-        ./src/blob_uint256.cpp
         ./src/uint256.cpp
         ./src/util/threadnames.cpp
         ./src/util.cpp

@@ -378,8 +378,8 @@ public:
 
     uint64_t GetHash(const arith_uint256& salt) const;
 
-    //friend arith_uint512 UintToArith512(const blob_uint512 &a);
-    //friend blob_uint512 ArithToUint512(const arith_uint512 &a);
+    friend arith_uint512 UintToArith512(const uint512 &a);
+    friend uint512 ArithToUint512(const arith_uint512 &a);
 
 };
 
