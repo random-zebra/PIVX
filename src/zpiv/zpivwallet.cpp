@@ -365,7 +365,7 @@ void CzPIVWallet::SeedToZPIV(const uint512& seedZerocoin, CBigNum& bnValue, CBig
     }
 
     //hash randomness seed with Bottom 256 bits of seedZerocoin & attempts256 which is initially 0
-    uint256 randomnessSeed = uint512(seedZerocoin >> 256).trim256();
+    uint256 randomnessSeed = ArithToUint512(UintToArith512(seedZerocoin) >> 256).trim256();
     uint256 hashRandomness = Hash(randomnessSeed.begin(), randomnessSeed.end());
     bnRandomness.setuint256(hashRandomness);
     bnRandomness = bnRandomness % params->coinCommitmentGroup.groupOrder;
@@ -377,7 +377,7 @@ void CzPIVWallet::SeedToZPIV(const uint512& seedZerocoin, CBigNum& bnValue, CBig
                         params->coinCommitmentGroup.modulus);
 
     CBigNum random;
-    uint256 attempts256;
+    arith_uint256 attempts256;
     // Iterate on Randomness until a valid commitmentValue is found
     while (true) {
         // Now verify that the commitment is a prime number
