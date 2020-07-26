@@ -763,7 +763,7 @@ struct sortProposalsByVotes {
     {
         if (left.second != right.second)
             return (left.second > right.second);
-        return (left.first->nFeeTXHash > right.first->nFeeTXHash);
+        return UintToArith256(left.first->nFeeTXHash) > UintToArith256(right.first->nFeeTXHash);
     }
 };
 
@@ -845,7 +845,7 @@ struct sortFinalizedBudgetsByVotes {
     {
         if (left.second != right.second)
             return left.second > right.second;
-        return (left.first->nFeeTXHash > right.first->nFeeTXHash);
+        return UintToArith256(left.first->nFeeTXHash) > UintToArith256(right.first->nFeeTXHash);
     }
 };
 

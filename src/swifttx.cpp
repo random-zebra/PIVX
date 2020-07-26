@@ -479,7 +479,7 @@ int GetTransactionLockSignatures(uint256 txHash)
 
 uint256 CConsensusVote::GetHash() const
 {
-    return vinMasternode.prevout.hash + vinMasternode.prevout.n + txHash;
+    return ArithToUint256(UintToArith256(vinMasternode.prevout.hash) + vinMasternode.prevout.n + UintToArith256(txHash));
 }
 
 uint256 CConsensusVote::GetSignatureHash() const

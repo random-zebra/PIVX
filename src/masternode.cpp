@@ -243,7 +243,7 @@ int64_t CMasternode::SecondsSincePayment()
     uint256 hash = ss.GetHash();
 
     // return some deterministic value for unknown/unpaid but force it to be more than 30 days old
-    return month + hash.GetCompact(false);
+    return month + UintToArith256(hash).GetCompact(false);
 }
 
 int64_t CMasternode::GetLastPaid()
@@ -260,7 +260,7 @@ int64_t CMasternode::GetLastPaid()
     uint256 hash = ss.GetHash();
 
     // use a deterministic offset to break a tie -- 2.5 minutes
-    int64_t nOffset = hash.GetCompact(false) % 150;
+    int64_t nOffset = UintToArith256(hash).GetCompact(false) % 150;
 
     if (chainActive.Tip() == NULL) return false;
 
