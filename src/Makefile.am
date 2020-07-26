@@ -187,7 +187,6 @@ BITCOIN_CORE_H = \
   guiinterface.h \
   guiinterfaceutil.h \
   uint256.h \
-  uint512.h \
   blob_uint256.h \
   undo.h \
   util/memory.h \

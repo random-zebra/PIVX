@@ -7,7 +7,6 @@
 #define BITCOIN_ARITH_UINT256_H
 
 #include "blob_uint256.h"
-#include "uint512.h"
 #include <assert.h>
 #include <cstring>
 #include <stdexcept>

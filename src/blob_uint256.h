@@ -155,4 +155,40 @@ inline blob_uint256 blob_uint256S(const std::string& str)
 const blob_uint256 BLOB_UINT256_ZERO = blob_uint256();
 const blob_uint256 BLOB_UINT256_ONE = blob_uint256S("0000000000000000000000000000000000000000000000000000000000000001");
 
+
+/** 512-bit unsigned big integer. */
+class blob_uint512 : public base_blob<512>
+{
+public:
+    blob_uint512() {}
+    blob_uint512(const base_blob<512>& b) : base_blob<512>(b) {}
+    explicit blob_uint512(const std::vector<unsigned char>& vch) : base_blob<512>(vch) {}
+
+    blob_uint256 trim256() const
+    {
+        std::vector<unsigned char> vch;
+        const unsigned char* p = this->begin();
+        for (unsigned int i = 0; i < 32; i++) {
+            vch.push_back(*p++);
+        }
+        return blob_uint256(vch);
+    }
+};
+
+/* uint512 from const char *.
+ * This is a separate function because the constructor uint512(const char*) can result
+ * in dangerously catching uint512(0).
+ */
+inline blob_uint512 blob_uint512S(const char *str)
+{
+    blob_uint512 rv;
+    rv.SetHex(str);
+    return rv;
+}
+
+inline blob_uint512 blob_uint512S(const std::string& str)
+{
+    return blob_uint512S(str.c_str());
+}
+
 #endif // PIVX_BLOB_UINT256_H

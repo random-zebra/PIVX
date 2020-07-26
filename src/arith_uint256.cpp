@@ -266,6 +266,8 @@ template base_uint<512>& base_uint<512>::operator<<=(unsigned int);
 template base_uint<512>& base_uint<512>::operator>>=(unsigned int);
 template std::string base_uint<512>::GetHex() const;
 template std::string base_uint<512>::ToString() const;
+template void base_uint<512>::SetHex(const char*);
+template void base_uint<512>::SetHex(const std::string&);
 template std::string base_uint<512>::ToStringReverseEndian() const;
 
 // This implementation directly uses shifts instead of going
