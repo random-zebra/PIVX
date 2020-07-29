@@ -68,6 +68,7 @@ public:
     uint256 GetBestBlock() const;
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
     bool GetStats(CCoinsStats& stats) const;
+    size_t EstimateSize() const override;
 };
 
 /** Access to the block database (blocks/index/) */

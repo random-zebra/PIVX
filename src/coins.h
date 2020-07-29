@@ -302,6 +302,7 @@ struct CCoinsStats {
     uint64_t nTransactions;
     uint64_t nTransactionOutputs;
     uint256 hashSerialized;
+    uint64_t nDiskSize;
     CAmount nTotalAmount;
 
     CCoinsStats() : nHeight(0), nTransactions(0), nTransactionOutputs(0), nTotalAmount(0) {}
@@ -331,6 +332,9 @@ public:
 
     //! As we use CCoinsViews polymorphically, have a virtual destructor
     virtual ~CCoinsView() {}
+
+    //! Estimate database size (0 if not implemented)
+    virtual size_t EstimateSize() const { return 0; }
 };
 
 
@@ -348,6 +352,7 @@ public:
     void SetBackend(CCoinsView& viewIn);
     bool BatchWrite(CCoinsMap& mapCoins, const uint256& hashBlock);
     bool GetStats(CCoinsStats& stats) const;
+    size_t EstimateSize() const override;
 };
 
 class CCoinsViewCache;
