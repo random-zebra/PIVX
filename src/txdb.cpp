@@ -123,17 +123,19 @@ bool CCoinsViewDB::GetStats(CCoinsStats& stats) const
         CCoins coins;
         if (pcursor->GetKey(key) && key.first == DB_COINS) {
             if (pcursor->GetValue(coins)) {
+                ss << key;
+                ss << VARINT(coins.nHeight * 2 + coins.fCoinBase);
                 stats.nTransactions++;
                 for (unsigned int i = 0; i < coins.vout.size(); i++) {
                     const CTxOut& out = coins.vout[i];
                     if (!out.IsNull()) {
                         stats.nTransactionOutputs++;
                         ss << VARINT(i + 1);
-                        ss << out;
+                        ss << *(const CScriptBase*)(&out.scriptPubKey);
+                        ss << VARINT(out.nValue);
                         nTotalAmount += out.nValue;
                     }
                 }
-                stats.nSerializedSize += 32 + pcursor->GetValueSize();
                 ss << VARINT(0);
             } else {
                 return error("CCoinsViewDB::GetStats() : unable to read value");
