@@ -1823,19 +1823,19 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
     CAmount nFees = 0;
     for (unsigned int i = 0; i < tx.vin.size(); i++) {
         const COutPoint &prevout = tx.vin[i].prevout;
-        const CCoins *coins = inputs.AccessCoins(prevout.hash);
-        assert(coins);
+        const Coin& coin = inputs.AccessCoin(prevout);
+        assert(!coin.IsPruned());
 
         // If prev is coinbase, check that it's matured
-        if (coins->IsCoinBase() || coins->IsCoinStake()) {
-            if (nSpendHeight - coins->nHeight < consensus.nCoinbaseMaturity)
+        if (coin.IsCoinBase() || coin.IsCoinStake()) {
+            if (nSpendHeight - coin.nHeight < consensus.nCoinbaseMaturity)
                 return state.Invalid(false, REJECT_INVALID, "bad-txns-premature-spend-of-coinbase-coinstake",
-                        strprintf("tried to spend coinbase/coinstake at depth %d", nSpendHeight - coins->nHeight));
+                        strprintf("tried to spend coinbase/coinstake at depth %d", nSpendHeight - coin.nHeight));
         }
 
         // Check for negative or overflow input values
-        nValueIn += coins->vout[prevout.n].nValue;
-        if (!consensus.MoneyRange(coins->vout[prevout.n].nValue) || !consensus.MoneyRange(nValueIn))
+        nValueIn += coin.out.nValue;
+        if (!consensus.MoneyRange(coin.out.nValue) || !consensus.MoneyRange(nValueIn))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
     }
 
