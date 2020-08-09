@@ -42,7 +42,7 @@ Low-level RPC changes
   - The `gettxout` RPC no longer has a `version` field in the response.
   - The `gettxoutsetinfo` RPC reports `hash_serialized_2` instead of `hash_serialized`,
     which does not commit to the transaction versions of unspent outputs, but does
-    commit to the height and coinbase information.
+    commit to the height and coinbase/coinstake information.
   - The `getutxos` REST path no longer reports the `txvers` field in JSON format,
     and always reports 0 for transaction versions in the binary format
 

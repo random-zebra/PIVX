@@ -129,7 +129,7 @@ bool CCoinsViewDB::GetStats(CCoinsStats& stats) const
         if (pcursor->GetKey(key) && key.first == DB_COINS) {
             if (pcursor->GetValue(coins)) {
                 ss << key;
-                ss << VARINT(coins.nHeight * 2 + coins.fCoinBase);
+                ss << VARINT(coins.nHeight * 4 + (coins.fCoinBase ? 2 : 0) + (coins.fCoinStake ? 1 : 0));
                 stats.nTransactions++;
                 for (unsigned int i = 0; i < coins.vout.size(); i++) {
                     const CTxOut& out = coins.vout[i];
