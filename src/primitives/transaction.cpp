@@ -165,7 +165,7 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     *const_cast<std::vector<CTxOut>*>(&vout) = tx.vout;
     *const_cast<unsigned int*>(&nLockTime) = tx.nLockTime;
     *const_cast<uint256*>(&hash) = tx.hash;
-    *const_cast<SaplingTxData*>(&sapData) = tx.sapData;
+    *const_cast<Optional<SaplingTxData>*>(&sapData) = tx.sapData;
     return *this;
 }
 
@@ -258,9 +258,9 @@ CAmount CTransaction::GetValueOut() const
     }
 
     // Sapling
-    if (sapData.valueBalance < 0) {
+    if (hasSaplingData() && sapData->valueBalance < 0) {
         // NB: negative valueBalance "takes" money from the transparent value pool just as outputs do
-        nValueOut += -sapData.valueBalance;
+        nValueOut += -sapData->valueBalance;
 
         // Verify Sapling
         if (nVersion < SAPLING_VERSION)
@@ -274,9 +274,9 @@ CAmount CTransaction::GetShieldedValueIn() const
 {
     CAmount nValue = 0;
 
-    if (sapData.valueBalance > 0) {
+    if (hasSaplingData() && sapData->valueBalance > 0) {
         // NB: positive valueBalance "gives" money to the transparent value pool just as inputs do
-        nValue += sapData.valueBalance;
+        nValue += sapData->valueBalance;
 
         // Verify Sapling
         if (nVersion < SAPLING_VERSION)
