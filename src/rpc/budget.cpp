@@ -216,7 +216,7 @@ UniValue submitbudget(const JSONRPCRequest& request)
     //     return "Proposal is not valid - " + budgetProposalBroadcast.GetHash().ToString() + " - " + strError;
     // }
 
-    governanceManager.mapSeenMasternodeBudgetProposals.insert(std::make_pair(budgetProposalBroadcast.GetHash(), budgetProposalBroadcast));
+    governanceManager.AddSeenProposal(budgetProposalBroadcast);
     budgetProposalBroadcast.Relay();
     if(governanceManager.AddProposal(budgetProposalBroadcast)) {
         return budgetProposalBroadcast.GetHash().ToString();
@@ -324,7 +324,7 @@ UniValue mnbudgetvote(const JSONRPCRequest& request)
             std::string strError = "";
             if (governanceManager.UpdateProposal(vote, NULL, strError)) {
                 success++;
-                governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+                governanceManager.AddSeenVote(vote);
                 vote.Relay();
                 statusObj.push_back(Pair("node", "local"));
                 statusObj.push_back(Pair("result", "success"));
@@ -389,7 +389,7 @@ UniValue mnbudgetvote(const JSONRPCRequest& request)
 
             std::string strError = "";
             if (governanceManager.UpdateProposal(vote, NULL, strError)) {
-                governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+                governanceManager.AddSeenVote(vote);
                 vote.Relay();
                 success++;
                 statusObj.push_back(Pair("node", mne.getAlias()));
@@ -463,7 +463,7 @@ UniValue mnbudgetvote(const JSONRPCRequest& request)
 
             std::string strError = "";
             if(governanceManager.UpdateProposal(vote, NULL, strError)) {
-                governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+                governanceManager.AddSeenVote(vote);
                 vote.Relay();
                 success++;
                 statusObj.push_back(Pair("node", mne.getAlias()));
@@ -743,7 +743,7 @@ UniValue mnbudgetrawvote(const JSONRPCRequest& request)
 
     std::string strError = "";
     if (governanceManager.UpdateProposal(vote, NULL, strError)) {
-        governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+        governanceManager.AddSeenVote(vote);
         vote.Relay();
         return "Voted successfully";
     } else {
@@ -912,11 +912,11 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
 
         UniValue obj(UniValue::VOBJ);
 
-        CFinalizedBudget* pfinalBudget = budgetManager.FindFinalizedBudget(hash);
+        const CFinalizedBudget* pfinalBudget = budgetManager.FindFinalizedBudget(hash);
 
-        if (pfinalBudget == NULL) return "Unknown budget hash";
+        if (pfinalBudget == nullptr) return "Unknown budget hash";
 
-        std::map<uint256, CFinalizedBudgetVote>::iterator it = pfinalBudget->mapVotes.begin();
+        auto it = pfinalBudget->mapVotes.begin();
         while (it != pfinalBudget->mapVotes.end()) {
             UniValue bObj(UniValue::VOBJ);
             bObj.push_back(Pair("nHash", (*it).first.ToString().c_str()));

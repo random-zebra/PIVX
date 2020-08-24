@@ -66,17 +66,16 @@ private:
     // hold txes until they mature enough to use
     std::map<uint256, uint256> mapCollateralTxids;
 
-public:
-    // critical section to protect the inner data structures
-    mutable RecursiveMutex cs;
-
     // keep track of the scanning errors I've seen
     std::map<uint256, CBudgetProposal> mapProposals;
 
-    // !TODO: make private for better encapsulation
     std::map<uint256, CBudgetProposal> mapSeenMasternodeBudgetProposals;
     std::map<uint256, CBudgetVote> mapSeenMasternodeBudgetVotes;
     std::map<uint256, CBudgetVote> mapOrphanMasternodeBudgetVotes;
+
+public:
+    // critical section to protect the inner data structures
+    mutable RecursiveMutex cs;
 
     CGovernanceManager()
     {
@@ -89,6 +88,16 @@ public:
         mapSeenMasternodeBudgetVotes.clear();
     }
 
+    bool HaveSeenProposal(const uint256& hash) const;
+    bool HaveSeenVote(const uint256& hash) const;
+
+    void AddSeenProposal(CBudgetProposal& budgetProposal);
+    void AddSeenVote(CBudgetVote& vote);
+
+    // hash must be in relative map (proposal/votes)
+    CDataStream GetProposalSerialized(const uint256& hash) const;
+    CDataStream GetVoteSerialized(const uint256& hash) const;
+
     int sizeProposals() { return (int)mapProposals.size(); }
 
     void ResetSync();
@@ -100,9 +109,9 @@ public:
     void NewBlock();
 
     CBudgetProposal* FindProposal(const std::string& strProposalName);
-    CBudgetProposal* FindProposal(uint256 nHash);
+    CBudgetProposal* FindProposal(const uint256& nHash);
 
-    CAmount GetTotalBudget(int nHeight);
+    static CAmount GetTotalBudget(int nHeight);
     std::vector<CBudgetProposal*> GetBudget();
     std::vector<CBudgetProposal*> GetAllProposals();
 

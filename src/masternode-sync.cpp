@@ -134,10 +134,10 @@ void CMasternodeSync::AddedMasternodeWinner(uint256 hash)
 
 void CMasternodeSync::AddedBudgetItem(uint256 hash)
 {
-    if (governanceManager.mapSeenMasternodeBudgetProposals.count(hash) ||
-            governanceManager.mapSeenMasternodeBudgetVotes.count(hash) ||
-            budgetManager.mapSeenFinalizedBudgets.count(hash) ||
-            budgetManager.mapSeenFinalizedBudgetVotes.count(hash)) {
+    if (governanceManager.HaveSeenProposal(hash) ||
+            governanceManager.HaveSeenVote(hash) ||
+            budgetManager.HaveSeenFinalizedBudget(hash) ||
+            budgetManager.HaveSeenFinalizedVote(hash)) {
         if (mapSeenSyncBudget[hash] < MASTERNODE_SYNC_THRESHOLD) {
             lastBudgetItem = GetTime();
             mapSeenSyncBudget[hash]++;
