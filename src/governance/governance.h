@@ -16,6 +16,8 @@
 #include "sync.h"
 #include "util.h"
 
+#include <univalue.h>
+
 #define VOTE_ABSTAIN 0
 #define VOTE_YES 1
 #define VOTE_NO 2
@@ -53,8 +55,8 @@ public:
     };
 
     CGovernanceDB();
-    bool Write(const CGovernanceManager& objToSave);
-    ReadResult Read(CGovernanceManager& objToLoad, bool fDryRun = false);
+    bool Write(const CGovernanceManager& objToSave) const;
+    ReadResult Read(CGovernanceManager& objToLoad, bool fDryRun = false) const;
 };
 
 /*
@@ -98,7 +100,7 @@ public:
     CDataStream GetProposalSerialized(const uint256& hash) const;
     CDataStream GetVoteSerialized(const uint256& hash) const;
 
-    int sizeProposals() { return (int)mapProposals.size(); }
+    int sizeProposals() const { return (int)mapProposals.size(); }
 
     void ResetSync();
     void MarkSynced();
@@ -108,8 +110,9 @@ public:
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     void NewBlock();
 
-    CBudgetProposal* FindProposal(const std::string& strProposalName);
     CBudgetProposal* FindProposal(const uint256& nHash);
+    const CBudgetProposal* GetProposal(const uint256& nHash) const;
+    const CBudgetProposal* GetProposal(const std::string& strProposalName) const;
 
     static CAmount GetTotalBudget(int nHeight);
     std::vector<CBudgetProposal*> GetBudget();
@@ -185,26 +188,27 @@ public:
 
     bool IsValid(std::string& strError, bool fCheckCollateral = true);
 
-    bool IsEstablished();
+    bool IsEstablished() const;
     bool IsPassing(const CBlockIndex* pindexPrev, int nBlockStartBudget, int nBlockEndBudget, int mnCount);
 
-    std::string GetName() { return strProposalName; }
-    std::string GetURL() { return strURL; }
-    int GetBlockStart() { return nBlockStart; }
-    int GetBlockEnd() { return nBlockEnd; }
-    CScript GetPayee() { return address; }
-    int GetTotalPaymentCount();
-    int GetRemainingPaymentCount();
-    int GetBlockStartCycle();
-    int GetBlockCurrentCycle();
-    int GetBlockEndCycle();
-    double GetRatio();
+    std::string GetName() const { return strProposalName; }
+    std::string GetURL() const { return strURL; }
+    int GetBlockStart() const { return nBlockStart; }
+    int GetBlockEnd() const { return nBlockEnd; }
+    CScript GetPayee() const { return address; }
+    int GetTotalPaymentCount() const;
+    int GetRemainingPaymentCount() const;
+    int GetBlockStartCycle() const;
+    int GetBlockCurrentCycle() const;
+    int GetBlockEndCycle() const;
+    double GetRatio() const;
+    UniValue GetVotesArray() const;
     int GetYeas() const;
     int GetNays() const;
     int GetAbstains() const;
-    CAmount GetAmount() { return nAmount; }
+    CAmount GetAmount() const { return nAmount; }
     void SetAllotted(CAmount nAllotedIn) { nAlloted = nAllotedIn; }
-    CAmount GetAllotted() { return nAlloted; }
+    CAmount GetAllotted() const { return nAlloted; }
 
     void CleanAndRemove();
 
@@ -314,7 +318,7 @@ public:
 
     void Relay();
 
-    std::string GetVoteString()
+    std::string GetVoteString() const
     {
         std::string ret = "ABSTAIN";
         if (nVote == VOTE_YES) ret = "YES";

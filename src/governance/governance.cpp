@@ -132,7 +132,7 @@ CGovernanceDB::CGovernanceDB()
     strMagicMessage = "MasternodeGovernance";
 }
 
-bool CGovernanceDB::Write(const CGovernanceManager& objToSave)
+bool CGovernanceDB::Write(const CGovernanceManager& objToSave) const
 {
     LOCK(objToSave.cs);
 
@@ -165,7 +165,7 @@ bool CGovernanceDB::Write(const CGovernanceManager& objToSave)
     return true;
 }
 
-CGovernanceDB::ReadResult CGovernanceDB::Read(CGovernanceManager& objToLoad, bool fDryRun)
+CGovernanceDB::ReadResult CGovernanceDB::Read(CGovernanceManager& objToLoad, bool fDryRun) const
 {
     LOCK(objToLoad.cs);
 
@@ -264,7 +264,7 @@ bool CGovernanceManager::AddProposal(CBudgetProposal& budgetProposal)
     }
 
     mapProposals.insert(std::make_pair(budgetProposal.GetHash(), budgetProposal));
-    LogPrint(BCLog::MNBUDGET,"%s: proposal %s added\n", __func__, budgetProposal.GetName ().c_str ());
+    LogPrint(BCLog::MNBUDGET,"%s: proposal %s added\n", __func__, budgetProposal.GetName().c_str ());
     return true;
 }
 
@@ -284,12 +284,12 @@ void CGovernanceManager::CheckAndRemove()
     }
 }
 
-CBudgetProposal* CGovernanceManager::FindProposal(const std::string& strProposalName)
+const CBudgetProposal* CGovernanceManager::GetProposal(const std::string& strProposalName) const
 {
+    LOCK(cs);
     //find the prop with the highest yes count
-
     int nYesCount = -99999;
-    CBudgetProposal* pbudgetProposal = nullptr;
+    const CBudgetProposal* pbudgetProposal = nullptr;
 
     auto it = mapProposals.begin();
     while (it != mapProposals.end()) {
@@ -303,6 +303,13 @@ CBudgetProposal* CGovernanceManager::FindProposal(const std::string& strProposal
     if (nYesCount == -99999) return nullptr;
 
     return pbudgetProposal;
+}
+
+const CBudgetProposal* CGovernanceManager::GetProposal(const uint256& nHash) const
+{
+    LOCK(cs);
+    auto it = mapProposals.find(nHash);
+    return (it != mapProposals.end() ? &it->second : nullptr);
 }
 
 CBudgetProposal* CGovernanceManager::FindProposal(const uint256& nHash)
@@ -917,7 +924,7 @@ bool CBudgetProposal::IsValid(std::string& strError, bool fCheckCollateral)
     return true;
 }
 
-bool CBudgetProposal::IsEstablished()
+bool CBudgetProposal::IsEstablished() const
 {
     return nTime < GetAdjustedTime() - Params().GetConsensus().nProposalEstablishmentTime;
 }
@@ -990,12 +997,12 @@ void CBudgetProposal::CleanAndRemove()
     }
 }
 
-double CBudgetProposal::GetRatio()
+double CBudgetProposal::GetRatio() const
 {
     int yeas = 0;
     int nays = 0;
 
-    std::map<uint256, CBudgetVote>::iterator it = mapVotes.begin();
+    auto it = mapVotes.begin();
 
     while (it != mapVotes.end()) {
         if ((*it).second.nVote == VOTE_YES) yeas++;
@@ -1006,6 +1013,26 @@ double CBudgetProposal::GetRatio()
     if (yeas + nays == 0) return 0.0f;
 
     return ((double)(yeas) / (double)(yeas + nays));
+}
+
+UniValue CBudgetProposal::GetVotesArray() const
+{
+    UniValue ret(UniValue::VARR);
+    auto it = mapVotes.begin();
+    while (it != mapVotes.end()) {
+        UniValue bObj(UniValue::VOBJ);
+        bObj.push_back(Pair("mnId", (*it).second.vin.prevout.hash.ToString()));
+        bObj.push_back(Pair("nHash", (*it).first.ToString().c_str()));
+        bObj.push_back(Pair("Vote", (*it).second.GetVoteString()));
+        bObj.push_back(Pair("nTime", (int64_t)(*it).second.nTime));
+        bObj.push_back(Pair("fValid", (*it).second.fValid));
+
+        ret.push_back(bObj);
+
+        it++;
+    }
+
+    return ret;
 }
 
 int CBudgetProposal::GetYeas() const
@@ -1047,14 +1074,14 @@ int CBudgetProposal::GetAbstains() const
     return ret;
 }
 
-int CBudgetProposal::GetBlockStartCycle()
+int CBudgetProposal::GetBlockStartCycle() const
 {
     //end block is half way through the next cycle (so the proposal will be removed much after the payment is sent)
 
     return nBlockStart - nBlockStart % Params().GetConsensus().nBudgetCycleBlocks;
 }
 
-int CBudgetProposal::GetBlockCurrentCycle()
+int CBudgetProposal::GetBlockCurrentCycle() const
 {
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (pindexPrev == NULL) return -1;
@@ -1064,7 +1091,7 @@ int CBudgetProposal::GetBlockCurrentCycle()
     return pindexPrev->nHeight - pindexPrev->nHeight % Params().GetConsensus().nBudgetCycleBlocks;
 }
 
-int CBudgetProposal::GetBlockEndCycle()
+int CBudgetProposal::GetBlockEndCycle() const
 {
     // Right now single payment proposals have nBlockEnd have a cycle too early!
     // switch back if it break something else
@@ -1076,12 +1103,12 @@ int CBudgetProposal::GetBlockEndCycle()
 
 }
 
-int CBudgetProposal::GetTotalPaymentCount()
+int CBudgetProposal::GetTotalPaymentCount() const
 {
     return (GetBlockEndCycle() - GetBlockStartCycle()) / Params().GetConsensus().nBudgetCycleBlocks;
 }
 
-int CBudgetProposal::GetRemainingPaymentCount()
+int CBudgetProposal::GetRemainingPaymentCount() const
 {
     // If this budget starts in the future, this value will be wrong
     int nPayments = (GetBlockEndCycle() - GetBlockCurrentCycle()) / Params().GetConsensus().nBudgetCycleBlocks - 1;

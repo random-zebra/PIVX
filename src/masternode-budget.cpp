@@ -1060,7 +1060,7 @@ std::string CFinalizedBudget::GetProposals() const
     std::string ret = "";
 
     for (const CTxBudgetPayment& budgetPayment : vecBudgetPayments) {
-        CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(budgetPayment.nProposalHash);
+        const CBudgetProposal* pbudgetProposal = governanceManager.GetProposal(budgetPayment.nProposalHash);
 
         std::string token = budgetPayment.nProposalHash.ToString();
 
@@ -1086,7 +1086,7 @@ std::string CFinalizedBudget::GetStatus()
             continue;
         }
 
-        CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(budgetPayment.nProposalHash);
+        const CBudgetProposal* pbudgetProposal = governanceManager.GetProposal(budgetPayment.nProposalHash);
         if (!pbudgetProposal) {
             if (retBadHashes == "") {
                 retBadHashes = "Unknown proposal hash! Check this proposal before voting: " + budgetPayment.nProposalHash.ToString();
