@@ -117,7 +117,7 @@ void CGovernanceManager::CheckOrphanVotes()
     std::map<uint256, CBudgetVote>::iterator it1 = mapOrphanMasternodeBudgetVotes.begin();
     while (it1 != mapOrphanMasternodeBudgetVotes.end()) {
         if (governanceManager.UpdateProposal(((*it1).second), NULL, strError)) {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckOrphanVotes - Proposal/Budget is known, activating and removing orphan vote\n");
+            LogPrint(BCLog::MNBUDGET,"%s: Proposal/Budget is known, activating and removing orphan vote\n", __func__);
             mapOrphanMasternodeBudgetVotes.erase(it1++);
         } else {
             ++it1;
@@ -126,13 +126,13 @@ void CGovernanceManager::CheckOrphanVotes()
     std::map<uint256, CFinalizedBudgetVote>::iterator it2 = mapOrphanFinalizedBudgetVotes.begin();
     while (it2 != mapOrphanFinalizedBudgetVotes.end()) {
         if (governanceManager.UpdateFinalizedBudget(((*it2).second), NULL, strError)) {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckOrphanVotes - Proposal/Budget is known, activating and removing orphan vote\n");
+            LogPrint(BCLog::MNBUDGET,"%s: Proposal/Budget is known, activating and removing orphan vote\n", __func__);
             mapOrphanFinalizedBudgetVotes.erase(it2++);
         } else {
             ++it2;
         }
     }
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckOrphanVotes - Done\n");
+    LogPrint(BCLog::MNBUDGET,"%s: Done\n", __func__);
 }
 
 void CGovernanceManager::SubmitFinalBudget()
@@ -150,7 +150,8 @@ void CGovernanceManager::SubmitFinalBudget()
     const int nBlocksPerCycle = Params().GetConsensus().nBudgetCycleBlocks;
     int nBlockStart = nCurrentHeight - nCurrentHeight % nBlocksPerCycle + nBlocksPerCycle;
     if (nSubmittedHeight >= nBlockStart){
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - nSubmittedHeight(=%ld) < nBlockStart(=%ld) condition not fulfilled.\n", nSubmittedHeight, nBlockStart);
+        LogPrint(BCLog::MNBUDGET,"%s: nSubmittedHeight(=%ld) < nBlockStart(=%ld) condition not fulfilled.\n",
+                __func__, nSubmittedHeight, nBlockStart);
         return;
     }
 
@@ -169,9 +170,10 @@ void CGovernanceManager::SubmitFinalBudget()
     int nOffsetToStart = nFinalizationStart - nCurrentHeight;
 
     if (nBlockStart - nCurrentHeight > finalizationWindow) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Too early for finalization. Current block is %ld, next Superblock is %ld.\n", nCurrentHeight, nBlockStart);
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - First possible block for finalization: %ld. Last possible block for finalization: %ld. You have to wait for %ld block(s) until Budget finalization will be possible\n", nFinalizationStart, nBlockStart, nOffsetToStart);
-
+        LogPrint(BCLog::MNBUDGET,"%s: Too early for finalization. Current block is %ld"
+                " First possible block for finalization: %ld. Last possible block for finalization: %ld."
+                " You have to wait for %ld block(s) until Budget finalization will be possible\n",
+                __func__, nCurrentHeight, nFinalizationStart, nBlockStart, nOffsetToStart);
         return;
     }
 
@@ -188,13 +190,13 @@ void CGovernanceManager::SubmitFinalBudget()
     }
 
     if (vecTxBudgetPayments.size() < 1) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Found No Proposals For Period\n");
+        LogPrint(BCLog::MNBUDGET,"%s: Found No Proposals For Period\n", __func__);
         return;
     }
 
     CFinalizedBudgetBroadcast tempBudget(strBudgetName, nBlockStart, vecTxBudgetPayments, UINT256_ZERO);
     if (mapSeenFinalizedBudgets.count(tempBudget.GetHash())) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Budget already exists - %s\n", tempBudget.GetHash().ToString());
+        LogPrint(BCLog::MNBUDGET,"%s: Budget already exists - %s\n", __func__, tempBudget.GetHash().ToString());
         nSubmittedHeight = nCurrentHeight;
         return; //already exists
     }
@@ -206,7 +208,7 @@ void CGovernanceManager::SubmitFinalBudget()
     if (!mapCollateralTxids.count(tempBudget.GetHash())) {
         CWalletTx wtx;
         if (!pwalletMain->GetBudgetFinalizationCollateralTX(wtx, tempBudget.GetHash(), false)) {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Can't make collateral transaction\n");
+            LogPrint(BCLog::MNBUDGET,"%s: Can't make collateral transaction\n", __func__);
             return;
         }
 
@@ -228,7 +230,7 @@ void CGovernanceManager::SubmitFinalBudget()
     uint256 nBlockHash;
 
     if (!GetTransaction(txidCollateral, txCollateral, nBlockHash, true)) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Can't find collateral tx %s", txidCollateral.ToString());
+        LogPrint(BCLog::MNBUDGET,"%s: Can't find collateral tx %s", __func__, txidCollateral.ToString());
         return;
     }
 
@@ -248,7 +250,8 @@ void CGovernanceManager::SubmitFinalBudget()
     */
     const int nRequiredConfs = Params().GetConsensus().nBudgetFeeConfirmations;
     if (conf < nRequiredConfs + 1) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Collateral requires at least %d confirmations - %s - %d confirmations\n", nRequiredConfs + 1, txidCollateral.ToString(), conf);
+        LogPrint(BCLog::MNBUDGET,"%s: Collateral requires at least %d confirmations - %s - %d confirmations\n",
+                __func__, nRequiredConfs + 1, txidCollateral.ToString(), conf);
         return;
     }
 
@@ -257,7 +260,7 @@ void CGovernanceManager::SubmitFinalBudget()
 
     std::string strError = "";
     if (!finalizedBudgetBroadcast.IsValid(strError)) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Invalid finalized budget - %s \n", strError);
+        LogPrint(BCLog::MNBUDGET,"%s: Invalid finalized budget - %s \n", __func__, strError);
         return;
     }
 
@@ -266,7 +269,7 @@ void CGovernanceManager::SubmitFinalBudget()
     finalizedBudgetBroadcast.Relay();
     governanceManager.AddFinalizedBudget(finalizedBudgetBroadcast);
     nSubmittedHeight = nCurrentHeight;
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::SubmitFinalBudget - Done! %s\n", finalizedBudgetBroadcast.GetHash().ToString());
+    LogPrint(BCLog::MNBUDGET,"%s: Done! %s\n", __func__, finalizedBudgetBroadcast.GetHash().ToString());
 }
 
 //
@@ -442,7 +445,7 @@ bool CGovernanceManager::AddProposal(CBudgetProposal& budgetProposal)
     LOCK(cs);
     std::string strError = "";
     if (!budgetProposal.IsValid(strError)) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::AddProposal - invalid budget proposal - %s\n", strError);
+        LogPrint(BCLog::MNBUDGET,"%s: invalid budget proposal - %s\n", __func__, strError);
         return false;
     }
 
@@ -451,7 +454,7 @@ bool CGovernanceManager::AddProposal(CBudgetProposal& budgetProposal)
     }
 
     mapProposals.insert(std::make_pair(budgetProposal.GetHash(), budgetProposal));
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::AddProposal - proposal %s added\n", budgetProposal.GetName ().c_str ());
+    LogPrint(BCLog::MNBUDGET,"%s: proposal %s added\n", __func__, budgetProposal.GetName ().c_str ());
     return true;
 }
 
@@ -470,24 +473,24 @@ void CGovernanceManager::CheckAndRemove()
         }
     }
 
-    LogPrint(BCLog::MNBUDGET, "CBudgetManager::CheckAndRemove at Height=%d\n", nHeight);
+    LogPrint(BCLog::MNBUDGET, "%s: Height=%d\n", __func__, nHeight);
 
     std::map<uint256, CFinalizedBudget> tmpMapFinalizedBudgets;
     std::map<uint256, CBudgetProposal> tmpMapProposals;
 
     std::string strError = "";
 
-    LogPrint(BCLog::MNBUDGET, "CBudgetManager::CheckAndRemove - mapFinalizedBudgets cleanup - size before: %d\n", mapFinalizedBudgets.size());
+    LogPrint(BCLog::MNBUDGET, "%s: mapFinalizedBudgets cleanup - size before: %d\n", __func__, mapFinalizedBudgets.size());
     std::map<uint256, CFinalizedBudget>::iterator it = mapFinalizedBudgets.begin();
     while (it != mapFinalizedBudgets.end()) {
         CFinalizedBudget* pfinalizedBudget = &((*it).second);
 
         pfinalizedBudget->fValid = pfinalizedBudget->IsValid(strError);
         if (!strError.empty ()) {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckAndRemove - Invalid finalized budget: %s\n", strError);
+            LogPrint(BCLog::MNBUDGET,"%s: Invalid finalized budget: %s\n", __func__, strError);
         }
         else {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckAndRemove - Found valid finalized budget: %s %s\n",
+            LogPrint(BCLog::MNBUDGET,"%s: Found valid finalized budget: %s %s\n", __func__,
                       pfinalizedBudget->strBudgetName.c_str(), pfinalizedBudget->nFeeTXHash.ToString().c_str());
         }
 
@@ -499,17 +502,17 @@ void CGovernanceManager::CheckAndRemove()
         ++it;
     }
 
-    LogPrint(BCLog::MNBUDGET, "CBudgetManager::CheckAndRemove - mapProposals cleanup - size before: %d\n", mapProposals.size());
+    LogPrint(BCLog::MNBUDGET, "%s: mapProposals cleanup - size before: %d\n", __func__, mapProposals.size());
     std::map<uint256, CBudgetProposal>::iterator it2 = mapProposals.begin();
     while (it2 != mapProposals.end()) {
         CBudgetProposal* pbudgetProposal = &((*it2).second);
         pbudgetProposal->fValid = pbudgetProposal->IsValid(strError);
         if (!strError.empty ()) {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckAndRemove - Invalid budget proposal - %s\n", strError);
+            LogPrint(BCLog::MNBUDGET,"%s: Invalid budget proposal - %s\n", __func__, strError);
             strError = "";
         }
         else {
-             LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckAndRemove - Found valid budget proposal: %s %s\n",
+             LogPrint(BCLog::MNBUDGET,"%s: Found valid budget proposal: %s %s\n", __func__,
                       pbudgetProposal->strProposalName.c_str(), pbudgetProposal->nFeeTXHash.ToString().c_str());
         }
         if (pbudgetProposal->fValid) {
@@ -526,9 +529,9 @@ void CGovernanceManager::CheckAndRemove()
     // mapFinalizedBudgets = tmpMapFinalizedBudgets;
     // mapProposals = tmpMapProposals;
 
-    LogPrint(BCLog::MNBUDGET, "CBudgetManager::CheckAndRemove - mapFinalizedBudgets cleanup - size after: %d\n", mapFinalizedBudgets.size());
-    LogPrint(BCLog::MNBUDGET, "CBudgetManager::CheckAndRemove - mapProposals cleanup - size after: %d\n", mapProposals.size());
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::CheckAndRemove - PASSED\n");
+    LogPrint(BCLog::MNBUDGET, "%s: mapFinalizedBudgets cleanup - size after: %d\n", __func__, mapFinalizedBudgets.size());
+    LogPrint(BCLog::MNBUDGET, "%s: mapProposals cleanup - size after: %d\n", __func__, mapProposals.size());
+    LogPrint(BCLog::MNBUDGET,"%s: PASSED\n", __func__);
 
 }
 
@@ -569,10 +572,11 @@ void CGovernanceManager::FillBlockPayee(CMutableTransaction& txNew, CAmount nFee
 
             CTxDestination address1;
             ExtractDestination(payee, address1);
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::FillBlockPayee - Budget payment to %s for %lld, nHighestCount = %d\n", EncodeDestination(address1), nAmount, nHighestCount);
+            LogPrint(BCLog::MNBUDGET,"%s: Budget payment to %s for %lld, nHighestCount = %d\n",
+                    __func__, EncodeDestination(address1), nAmount, nHighestCount);
         }
         else {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::FillBlockPayee - No Budget payment, nHighestCount = %d\n", nHighestCount);
+            LogPrint(BCLog::MNBUDGET,"%s: No Budget payment, nHighestCount = %d\n", __func__, nHighestCount);
         }
     } else {
         //miners get the full amount on these blocks
@@ -587,7 +591,7 @@ void CGovernanceManager::FillBlockPayee(CMutableTransaction& txNew, CAmount nFee
 
             CTxDestination address1;
             ExtractDestination(payee, address1);
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::FillBlockPayee - Budget payment to %s for %lld\n", EncodeDestination(address1), nAmount);
+            LogPrint(BCLog::MNBUDGET,"%s: Budget payment to %s for %lld\n", __func__, EncodeDestination(address1), nAmount);
         }
     }
 }
@@ -648,8 +652,8 @@ bool CGovernanceManager::IsBudgetPaymentBlock(int nBlockHeight)
         ++it;
     }
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsBudgetPaymentBlock() - nHighestCount: %lli, 5%% of Masternodes: %lli. Number of finalized budgets: %lli\n",
-              nHighestCount, nFivePercent, mapFinalizedBudgets.size());
+    LogPrint(BCLog::MNBUDGET,"%s: nHighestCount: %lli, 5%% of Masternodes: %lli. Number of finalized budgets: %lli\n",
+              __func__, nHighestCount, nFivePercent, mapFinalizedBudgets.size());
 
     // If budget doesn't have 5% of the network votes, then we should pay a masternode instead
     if (nHighestCount > nFivePercent) return true;
@@ -666,7 +670,7 @@ TrxValidationStatus CGovernanceManager::IsTransactionValid(const CTransaction& t
     int nFivePercent = mnodeman.CountEnabled(ActiveProtocol()) / 20;
     std::vector<CFinalizedBudget*> ret;
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid - checking %lli finalized budgets\n", mapFinalizedBudgets.size());
+    LogPrint(BCLog::MNBUDGET,"%s: checking %lli finalized budgets\n", __func__, mapFinalizedBudgets.size());
 
     // ------- Grab The Highest Count
 
@@ -683,8 +687,8 @@ TrxValidationStatus CGovernanceManager::IsTransactionValid(const CTransaction& t
         ++it;
     }
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid() - nHighestCount: %lli, 5%% of Masternodes: %lli mapFinalizedBudgets.size(): %ld\n",
-              nHighestCount, nFivePercent, mapFinalizedBudgets.size());
+    LogPrint(BCLog::MNBUDGET,"%s: nHighestCount: %lli, 5%% of Masternodes: %lli mapFinalizedBudgets.size(): %ld\n",
+              __func__, nHighestCount, nFivePercent, mapFinalizedBudgets.size());
     /*
         If budget doesn't have 5% of the network votes, then we should pay a masternode instead
     */
@@ -700,26 +704,26 @@ TrxValidationStatus CGovernanceManager::IsTransactionValid(const CTransaction& t
         CFinalizedBudget* pfinalizedBudget = &((*it).second);
         strProposals = pfinalizedBudget->GetProposals();
 
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid - checking budget (%s) with blockstart %lli, blockend %lli, nBlockHeight %lli, votes %lli, nCountThreshold %lli\n",
-                 strProposals.c_str(), pfinalizedBudget->GetBlockStart(), pfinalizedBudget->GetBlockEnd(),
+        LogPrint(BCLog::MNBUDGET,"%s: checking budget (%s) with blockstart %lli, blockend %lli, nBlockHeight %lli, votes %lli, nCountThreshold %lli\n",
+                 __func__, strProposals.c_str(), pfinalizedBudget->GetBlockStart(), pfinalizedBudget->GetBlockEnd(),
                  nBlockHeight, pfinalizedBudget->GetVoteCount(), nCountThreshold);
 
         if (pfinalizedBudget->GetVoteCount() > nCountThreshold) {
             fThreshold = true;
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid - GetVoteCount() > nCountThreshold passed\n");
+            LogPrint(BCLog::MNBUDGET,"%s: GetVoteCount() > nCountThreshold passed\n", __func__);
             if (nBlockHeight >= pfinalizedBudget->GetBlockStart() && nBlockHeight <= pfinalizedBudget->GetBlockEnd()) {
-                LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid - GetBlockStart() passed\n");
+                LogPrint(BCLog::MNBUDGET,"%s: GetBlockStart() passed\n", __func__);
                 transactionStatus = pfinalizedBudget->IsTransactionValid(txNew, nBlockHeight);
                 if (transactionStatus == TrxValidationStatus::Valid) {
-                    LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid - pfinalizedBudget->IsTransactionValid() passed\n");
+                    LogPrint(BCLog::MNBUDGET,"%s: pfinalizedBudget->IsTransactionValid() passed\n", __func__);
                     return TrxValidationStatus::Valid;
                 }
                 else {
-                    LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid - pfinalizedBudget->IsTransactionValid() error\n");
+                    LogPrint(BCLog::MNBUDGET,"%s: pfinalizedBudget->IsTransactionValid() error\n", __func__);
                 }
             }
             else {
-                LogPrint(BCLog::MNBUDGET,"CBudgetManager::IsTransactionValid - GetBlockStart() failed, budget is outside current payment cycle and will be ignored.\n");
+                LogPrint(BCLog::MNBUDGET,"%s: GetBlockStart() failed, budget is outside current payment cycle and will be ignored.\n", __func__);
             }
 
         }
@@ -808,11 +812,11 @@ std::vector<CBudgetProposal*> CGovernanceManager::GetBudget()
     while (it2 != vBudgetPorposalsSort.end()) {
         CBudgetProposal* pbudgetProposal = (*it2).first;
 
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::GetBudget() - Processing Budget %s\n", pbudgetProposal->strProposalName.c_str());
+        LogPrint(BCLog::MNBUDGET,"%s: Processing Budget %s\n", __func__, pbudgetProposal->strProposalName.c_str());
         //prop start/end should be inside this period
         if (pbudgetProposal->IsPassing(pindexPrev, nBlockStart, nBlockEnd, mnCount)) {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::GetBudget() -   Check 1 passed: valid=%d | %ld <= %ld | %ld >= %ld | Yeas=%d Nays=%d Count=%d | established=%d\n",
-                      pbudgetProposal->fValid, pbudgetProposal->nBlockStart, nBlockStart, pbudgetProposal->nBlockEnd,
+            LogPrint(BCLog::MNBUDGET,"%s: ---- Check 1 passed: valid=%d | %ld <= %ld | %ld >= %ld | Yeas=%d Nays=%d Count=%d | established=%d\n",
+                      __func__, pbudgetProposal->fValid, pbudgetProposal->nBlockStart, nBlockStart, pbudgetProposal->nBlockEnd,
                       nBlockEnd, pbudgetProposal->GetYeas(), pbudgetProposal->GetNays(), mnCount / 10,
                       pbudgetProposal->IsEstablished());
 
@@ -820,15 +824,15 @@ std::vector<CBudgetProposal*> CGovernanceManager::GetBudget()
                 pbudgetProposal->SetAllotted(pbudgetProposal->GetAmount());
                 nBudgetAllocated += pbudgetProposal->GetAmount();
                 vBudgetProposalsRet.push_back(pbudgetProposal);
-                LogPrint(BCLog::MNBUDGET,"CBudgetManager::GetBudget() -     Check 2 passed: Budget added\n");
+                LogPrint(BCLog::MNBUDGET,"%s: ---- Check 2 passed: Budget added\n", __func__);
             } else {
                 pbudgetProposal->SetAllotted(0);
-                LogPrint(BCLog::MNBUDGET,"CBudgetManager::GetBudget() -     Check 2 failed: no amount allotted\n");
+                LogPrint(BCLog::MNBUDGET,"%s: ---- Check 2 failed: no amount allotted\n", __func__);
             }
         }
         else {
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::GetBudget() -   Check 1 failed: valid=%d | %ld <= %ld | %ld >= %ld | Yeas=%d Nays=%d Count=%d | established=%d\n",
-                      pbudgetProposal->fValid, pbudgetProposal->nBlockStart, nBlockStart, pbudgetProposal->nBlockEnd,
+            LogPrint(BCLog::MNBUDGET,"%s: ---- Check 1 failed: valid=%d | %ld <= %ld | %ld >= %ld | Yeas=%d Nays=%d Count=%d | established=%d\n",
+                      __func__, pbudgetProposal->fValid, pbudgetProposal->nBlockStart, nBlockStart, pbudgetProposal->nBlockEnd,
                       nBlockEnd, pbudgetProposal->GetYeas(), pbudgetProposal->GetNays(), mnodeman.CountEnabled(ActiveProtocol()) / 10,
                       pbudgetProposal->IsEstablished());
         }
@@ -895,7 +899,7 @@ std::string CGovernanceManager::GetRequiredPaymentsString(int nBlockHeight)
                     ret += payment.nProposalHash.ToString();
                 }
             } else {
-                LogPrint(BCLog::MNBUDGET,"CBudgetManager::GetRequiredPaymentsString - Couldn't find budget payment for block %d\n", nBlockHeight);
+                LogPrint(BCLog::MNBUDGET,"%s: Couldn't find budget payment for block %d\n", __func__, nBlockHeight);
             }
         }
 
@@ -968,7 +972,7 @@ void CGovernanceManager::NewBlock()
 
     // incremental sync with our peers
     if (masternodeSync.IsSynced()) {
-        LogPrint(BCLog::MNBUDGET,"CBudgetManager::NewBlock - incremental sync started\n");
+        LogPrint(BCLog::MNBUDGET,"%s: incremental sync started\n", __func__);
         if (chainActive.Height() % 1440 == rand() % 1440) {
             ClearSeen();
             ResetSync();
@@ -988,7 +992,7 @@ void CGovernanceManager::NewBlock()
 
     //remove invalid votes once in a while (we have to check the signatures and validity of every vote, somewhat CPU intensive)
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::NewBlock - askedForSourceProposalOrBudget cleanup - size: %d\n", askedForSourceProposalOrBudget.size());
+    LogPrint(BCLog::MNBUDGET,"%s: askedForSourceProposalOrBudget cleanup - size: %d\n", __func__, askedForSourceProposalOrBudget.size());
     std::map<uint256, int64_t>::iterator it = askedForSourceProposalOrBudget.begin();
     while (it != askedForSourceProposalOrBudget.end()) {
         if ((*it).second > GetTime() - (60 * 60 * 24)) {
@@ -998,21 +1002,21 @@ void CGovernanceManager::NewBlock()
         }
     }
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::NewBlock - mapProposals cleanup - size: %d\n", mapProposals.size());
+    LogPrint(BCLog::MNBUDGET,"%s: mapProposals cleanup - size: %d\n", __func__, mapProposals.size());
     std::map<uint256, CBudgetProposal>::iterator it2 = mapProposals.begin();
     while (it2 != mapProposals.end()) {
         (*it2).second.CleanAndRemove();
         ++it2;
     }
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::NewBlock - mapFinalizedBudgets cleanup - size: %d\n", mapFinalizedBudgets.size());
+    LogPrint(BCLog::MNBUDGET,"%s: mapFinalizedBudgets cleanup - size: %d\n", __func__, mapFinalizedBudgets.size());
     std::map<uint256, CFinalizedBudget>::iterator it3 = mapFinalizedBudgets.begin();
     while (it3 != mapFinalizedBudgets.end()) {
         (*it3).second.CleanAndRemove();
         ++it3;
     }
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::NewBlock - vecImmatureBudgetProposals cleanup - size: %d\n", vecImmatureBudgetProposals.size());
+    LogPrint(BCLog::MNBUDGET,"%s: vecImmatureBudgetProposals cleanup - size: %d\n", __func__, vecImmatureBudgetProposals.size());
     std::vector<CBudgetProposalBroadcast>::iterator it4 = vecImmatureBudgetProposals.begin();
     while (it4 != vecImmatureBudgetProposals.end()) {
         std::string strError = "";
@@ -1023,7 +1027,7 @@ void CGovernanceManager::NewBlock()
         }
 
         if (!(*it4).IsValid(strError)) {
-            LogPrint(BCLog::MNBUDGET,"mprop (immature) - invalid budget proposal - %s\n", strError);
+            LogPrint(BCLog::MNBUDGET,"%s: mprop (immature) - invalid budget proposal - %s\n", __func__, strError);
             it4 = vecImmatureBudgetProposals.erase(it4);
             continue;
         }
@@ -1033,11 +1037,11 @@ void CGovernanceManager::NewBlock()
             (*it4).Relay();
         }
 
-        LogPrint(BCLog::MNBUDGET,"mprop (immature) - new budget - %s\n", (*it4).GetHash().ToString());
+        LogPrint(BCLog::MNBUDGET,"%s: mprop (immature) - new budget - %s\n", __func__, (*it4).GetHash().ToString());
         it4 = vecImmatureBudgetProposals.erase(it4);
     }
 
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::NewBlock - vecImmatureFinalizedBudgets cleanup - size: %d\n", vecImmatureFinalizedBudgets.size());
+    LogPrint(BCLog::MNBUDGET,"%s: vecImmatureFinalizedBudgets cleanup - size: %d\n", __func__, vecImmatureFinalizedBudgets.size());
     std::vector<CFinalizedBudgetBroadcast>::iterator it5 = vecImmatureFinalizedBudgets.begin();
     while (it5 != vecImmatureFinalizedBudgets.end()) {
         std::string strError = "";
@@ -1048,12 +1052,12 @@ void CGovernanceManager::NewBlock()
         }
 
         if (!(*it5).IsValid(strError)) {
-            LogPrint(BCLog::MNBUDGET,"fbs (immature) - invalid finalized budget - %s\n", strError);
+            LogPrint(BCLog::MNBUDGET,"%s: fbs (immature) - invalid finalized budget - %s\n", __func__, strError);
             it5 = vecImmatureFinalizedBudgets.erase(it5);
             continue;
         }
 
-        LogPrint(BCLog::MNBUDGET,"fbs (immature) - new finalized budget - %s\n", (*it5).GetHash().ToString());
+        LogPrint(BCLog::MNBUDGET,"%s: fbs (immature) - new finalized budget - %s\n", __func__, (*it5).GetHash().ToString());
 
         CFinalizedBudget finalizedBudget((*it5));
         if (AddFinalizedBudget(finalizedBudget)) {
@@ -1062,7 +1066,7 @@ void CGovernanceManager::NewBlock()
 
         it5 = vecImmatureFinalizedBudgets.erase(it5);
     }
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::NewBlock - PASSED\n");
+    LogPrint(BCLog::MNBUDGET,"%s: PASSED\n", __func__);
 }
 
 void CGovernanceManager::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
@@ -1150,7 +1154,7 @@ void CGovernanceManager::ProcessMessage(CNode* pfrom, std::string& strCommand, C
         mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
         if (!vote.CheckSignature()) {
             if (masternodeSync.IsSynced()) {
-                LogPrintf("CBudgetManager::ProcessMessage() : mvote - signature invalid\n");
+                LogPrintf("mvote - signature invalid\n");
                 LOCK(cs_main);
                 Misbehaving(pfrom->GetId(), 20);
             }
@@ -1225,7 +1229,7 @@ void CGovernanceManager::ProcessMessage(CNode* pfrom, std::string& strCommand, C
         mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
         if (!vote.CheckSignature()) {
             if (masternodeSync.IsSynced()) {
-                LogPrintf("CBudgetManager::ProcessMessage() : fbvote - signature from masternode %s invalid\n", HexStr(pmn->pubKeyMasternode));
+                LogPrintf("fbvote - signature from masternode %s invalid\n", HexStr(pmn->pubKeyMasternode));
                 LOCK(cs_main);
                 Misbehaving(pfrom->GetId(), 20);
             }
@@ -1367,7 +1371,7 @@ void CGovernanceManager::Sync(CNode* pfrom, uint256 nProp, bool fPartial)
 
     pfrom->PushMessage(NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_BUDGET_PROP, nInvCount);
 
-    LogPrint(BCLog::MNBUDGET, "CBudgetManager::Sync - sent %d items\n", nInvCount);
+    LogPrint(BCLog::MNBUDGET, "%s: sent %d items\n", __func__, nInvCount);
 
     nInvCount = 0;
 
@@ -1394,7 +1398,7 @@ void CGovernanceManager::Sync(CNode* pfrom, uint256 nProp, bool fPartial)
     }
 
     pfrom->PushMessage(NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_BUDGET_FIN, nInvCount);
-    LogPrint(BCLog::MNBUDGET, "CBudgetManager::Sync - sent %d items\n", nInvCount);
+    LogPrint(BCLog::MNBUDGET, "%s: sent %d items\n", __func__, nInvCount);
 }
 
 bool CGovernanceManager::UpdateProposal(CBudgetVote& vote, CNode* pfrom, std::string& strError)
@@ -1407,7 +1411,7 @@ bool CGovernanceManager::UpdateProposal(CBudgetVote& vote, CNode* pfrom, std::st
             //   otherwise we'll think a full sync succeeded when they return a result
             if (!masternodeSync.IsSynced()) return false;
 
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::UpdateProposal - Unknown proposal %d, asking for source proposal\n", vote.nProposalHash.ToString());
+            LogPrint(BCLog::MNBUDGET,"%s: Unknown proposal %d, asking for source proposal\n", __func__, vote.nProposalHash.ToString());
             mapOrphanMasternodeBudgetVotes[vote.nProposalHash] = vote;
 
             if (!askedForSourceProposalOrBudget.count(vote.nProposalHash)) {
@@ -1434,7 +1438,8 @@ bool CGovernanceManager::UpdateFinalizedBudget(CFinalizedBudgetVote& vote, CNode
             //   otherwise we'll think a full sync succeeded when they return a result
             if (!masternodeSync.IsSynced()) return false;
 
-            LogPrint(BCLog::MNBUDGET,"CBudgetManager::UpdateFinalizedBudget - Unknown Finalized Proposal %s, asking for source budget\n", vote.nBudgetHash.ToString());
+            LogPrint(BCLog::MNBUDGET,"%s: Unknown Finalized Proposal %s, asking for source budget\n",
+                    __func__, vote.nBudgetHash.ToString());
             mapOrphanFinalizedBudgetVotes[vote.nBudgetHash] = vote;
 
             if (!askedForSourceProposalOrBudget.count(vote.nBudgetHash)) {
@@ -1446,7 +1451,7 @@ bool CGovernanceManager::UpdateFinalizedBudget(CFinalizedBudgetVote& vote, CNode
         strError = "Finalized Budget " + vote.nBudgetHash.ToString() +  " not found!";
         return false;
     }
-    LogPrint(BCLog::MNBUDGET,"CBudgetManager::UpdateFinalizedBudget - Finalized Proposal %s added\n", vote.nBudgetHash.ToString());
+    LogPrint(BCLog::MNBUDGET,"%s: Finalized Proposal %s added\n", __func__, vote.nBudgetHash.ToString());
     return mapFinalizedBudgets[vote.nBudgetHash].AddOrUpdateVote(vote, strError);
 }
 
