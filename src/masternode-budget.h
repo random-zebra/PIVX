@@ -243,6 +243,7 @@ public:
     std::map<uint256, CFinalizedBudgetVote> mapVotes;
     uint256 nFeeTXHash;
     int64_t nTime;
+    std::string strInvalid;
 
     CFinalizedBudget();
     CFinalizedBudget(const CFinalizedBudget& other);
@@ -252,7 +253,12 @@ public:
     double GetScore();
     bool HasMinimumRequiredSupport();
 
-    bool IsValid(std::string& strError, bool fCheckCollateral = true);
+    /*
+     * set fValid, strInvalid and nTime. return fValid
+     */
+    bool UpdateValid();
+    bool IsValid() const { return fValid; }
+    std::string IsInvalidReason() const { return strInvalid; }
 
     std::string GetName() const { return strBudgetName; }
     std::string GetProposals() const;

@@ -42,13 +42,10 @@ void budgetToJSON(const CBudgetProposal* pbudgetProposal, UniValue& bObj)
     bObj.push_back(Pair("TotalPayment", ValueFromAmount(pbudgetProposal->GetAmount() * pbudgetProposal->GetTotalPaymentCount())));
     bObj.push_back(Pair("MonthlyPayment", ValueFromAmount(pbudgetProposal->GetAmount())));
     bObj.push_back(Pair("IsEstablished", pbudgetProposal->IsEstablished()));
-
-    /* !TODO: un-comment when IsValid is const
-    std::string strError = "";
-    bObj.push_back(Pair("IsValid", pbudgetProposal->IsValid(strError)));
-    bObj.push_back(Pair("IsValidReason", strError.c_str()));
-    bObj.push_back(Pair("fValid", pbudgetProposal->fValid));
-    */
+    bool fValid = pbudgetProposal->IsValid();
+    bObj.push_back(Pair("IsValid", fValid));
+    if (!fValid)
+        bObj.push_back(Pair("IsInvalidReason", pbudgetProposal->IsInvalidReason()));
 }
 
 void checkBudgetInputs(const UniValue& params, std::string &strProposalName, std::string &strURL,
@@ -138,9 +135,12 @@ UniValue preparebudget(const JSONRPCRequest& request)
     // create transaction 15 minutes into the future, to allow for confirmation time
     CBudgetProposalBroadcast budgetProposalBroadcast(strProposalName, strURL, nPaymentCount, scriptPubKey, nAmount, nBlockStart, UINT256_ZERO);
 
-    std::string strError = "";
-    if (!budgetProposalBroadcast.IsValid(strError, false))
-        throw std::runtime_error("Proposal is not valid - " + budgetProposalBroadcast.GetHash().ToString() + " - " + strError);
+    int nConf = 0;
+    if (!budgetProposalBroadcast.UpdateValid(nConf, true)) {
+        throw std::runtime_error(strprintf("Proposal %s not valid: %s",
+                budgetProposalBroadcast.GetHash().ToString(), budgetProposalBroadcast.IsInvalidReason())
+        );
+    }
 
     bool useIX = false; //true;
     // if (request.params.size() > 7) {
@@ -213,10 +213,6 @@ UniValue submitbudget(const JSONRPCRequest& request)
     if (!masternodeSync.IsBlockchainSynced()) {
         throw std::runtime_error("Must wait for client to sync with masternode network. Try again in a minute or so.");
     }
-
-    // if(!budgetProposalBroadcast.IsValid(strError)){
-    //     return "Proposal is not valid - " + budgetProposalBroadcast.GetHash().ToString() + " - " + strError;
-    // }
 
     governanceManager.AddSeenProposal(budgetProposalBroadcast);
     budgetProposalBroadcast.Relay();
@@ -571,8 +567,7 @@ UniValue getbudgetprojection(const JSONRPCRequest& request)
             "    \"MonthlyPayment\": xxx.xxx,    (numeric) Monthly payment amount\n"
             "    \"IsEstablished\": true|false,  (boolean) Established (true) or (false)\n"
             "    \"IsValid\": true|false,        (boolean) Valid (true) or Invalid (false)\n"
-            "    \"IsValidReason\": \"xxxx\",      (string) Error message, if any\n"
-            "    \"fValid\": true|false,         (boolean) Valid (true) or Invalid (false)\n"
+            "    \"IsInvalidReason\": \"xxxx\",    (string) Error message, if any\n"
             "    \"Alloted\": xxx.xxx,           (numeric) Amount alloted in current period\n"
             "    \"TotalBudgetAlloted\": xxx.xxx (numeric) Total alloted\n"
             "  }\n"
@@ -634,8 +629,7 @@ UniValue getbudgetinfo(const JSONRPCRequest& request)
             "    \"MonthlyPayment\": xxx.xxx,    (numeric) Monthly payment amount\n"
             "    \"IsEstablished\": true|false,  (boolean) Established (true) or (false)\n"
             "    \"IsValid\": true|false,        (boolean) Valid (true) or Invalid (false)\n"
-            "    \"IsValidReason\": \"xxxx\",      (string) Error message, if any\n"
-            "    \"fValid\": true|false,         (boolean) Valid (true) or Invalid (false)\n"
+            "    \"IsInvalidReason\": \"xxxx\",    (string) Error message, if any\n"
             "  }\n"
             "  ,...\n"
             "]\n"
@@ -876,10 +870,10 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
             bObj.push_back(Pair("Proposals", finalizedBudget->GetProposals()));
             bObj.push_back(Pair("VoteCount", (int64_t)finalizedBudget->GetVoteCount()));
             bObj.push_back(Pair("Status", finalizedBudget->GetStatus()));
-
-            std::string strError = "";
-            bObj.push_back(Pair("IsValid", finalizedBudget->IsValid(strError)));
-            bObj.push_back(Pair("IsValidReason", strError.c_str()));
+            bool fValid = finalizedBudget->IsValid();
+            bObj.push_back(Pair("IsValid", fValid));
+            if (!fValid)
+                bObj.push_back(Pair("IsInvalidReason", finalizedBudget->IsInvalidReason()));
 
             resultObj.push_back(Pair(finalizedBudget->GetName(), bObj));
         }

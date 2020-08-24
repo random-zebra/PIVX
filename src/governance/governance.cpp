@@ -253,9 +253,9 @@ CGovernanceDB::ReadResult CGovernanceDB::Read(CGovernanceManager& objToLoad, boo
 bool CGovernanceManager::AddProposal(CBudgetProposal& budgetProposal)
 {
     LOCK(cs);
-    std::string strError = "";
-    if (!budgetProposal.IsValid(strError)) {
-        LogPrint(BCLog::MNBUDGET,"%s: invalid budget proposal - %s\n", __func__, strError);
+    int nConf = 0;
+    if (!budgetProposal.UpdateValid(nConf)) {
+        LogPrint(BCLog::MNBUDGET,"%s: invalid budget proposal - %s\n", __func__, budgetProposal.IsInvalidReason());
         return false;
     }
 
@@ -275,11 +275,11 @@ void CGovernanceManager::CheckAndRemove()
 
     LogPrint(BCLog::MNBUDGET, "%s: Height=%d\n", __func__, nHeight);
 
-    std::string strError = "";
     auto it = mapProposals.begin();
     while (it != mapProposals.end()) {
+        int nConf = 0;
         CBudgetProposal* pbudgetProposal = &((*it).second);
-        pbudgetProposal->fValid = pbudgetProposal->IsValid(strError);
+        pbudgetProposal->UpdateValid(nConf);
         ++it;
     }
 }
@@ -502,15 +502,9 @@ void CGovernanceManager::NewBlock()
     LogPrint(BCLog::MNBUDGET,"%s: vecImmatureBudgetProposals cleanup - size: %d\n", __func__, vecImmatureBudgetProposals.size());
     std::vector<CBudgetProposalBroadcast>::iterator it3 = vecImmatureBudgetProposals.begin();
     while (it3 != vecImmatureBudgetProposals.end()) {
-        std::string strError = "";
         int nConf = 0;
-        if (!IsBudgetCollateralValid((*it3).nFeeTXHash, (*it3).GetHash(), strError, (*it3).nTime, nConf)) {
-            ++it3;
-            continue;
-        }
-
-        if (!(*it3).IsValid(strError)) {
-            LogPrint(BCLog::MNBUDGET,"%s: mprop (immature) - invalid budget proposal - %s\n", __func__, strError);
+        if (!(*it3).UpdateValid(nConf)) {
+            LogPrint(BCLog::MNBUDGET,"%s: mprop (immature) - invalid budget proposal - %s\n", __func__, (*it3).IsInvalidReason());
             it3 = vecImmatureBudgetProposals.erase(it3);
             continue;
         }
@@ -562,20 +556,17 @@ void CGovernanceManager::ProcessMessage(CNode* pfrom, std::string& strCommand, C
             return;
         }
 
+
         std::string strError = "";
         int nConf = 0;
-        if (!IsBudgetCollateralValid(budgetProposalBroadcast.nFeeTXHash, budgetProposalBroadcast.GetHash(), strError, budgetProposalBroadcast.nTime, nConf)) {
-            LogPrint(BCLog::MNBUDGET,"Proposal FeeTX is not valid - %s - %s\n", budgetProposalBroadcast.nFeeTXHash.ToString(), strError);
+        if (!budgetProposalBroadcast.UpdateValid(nConf)) {
+            LogPrint(BCLog::MNBUDGET,"Proposal FeeTX is not valid - %s - %s\n",
+                    budgetProposalBroadcast.nFeeTXHash.ToString(), budgetProposalBroadcast.IsInvalidReason());
             if (nConf >= 1) vecImmatureBudgetProposals.push_back(budgetProposalBroadcast);
             return;
         }
 
         mapSeenMasternodeBudgetProposals.insert(std::make_pair(budgetProposalBroadcast.GetHash(), budgetProposalBroadcast));
-
-        if (!budgetProposalBroadcast.IsValid(strError)) {
-            LogPrint(BCLog::MNBUDGET,"mprop - invalid budget proposal - %s\n", strError);
-            return;
-        }
 
         CBudgetProposal budgetProposal(budgetProposalBroadcast);
         if (AddProposal(budgetProposal)) {
@@ -803,6 +794,7 @@ CBudgetProposal::CBudgetProposal()
     nAmount = 0;
     nTime = 0;
     fValid = true;
+    strInvalid = "";
 }
 
 CBudgetProposal::CBudgetProposal(std::string strProposalNameIn, std::string strURLIn, int nBlockStartIn, int nBlockEndIn, CScript addressIn, CAmount nAmountIn, uint256 nFeeTXHashIn)
@@ -815,6 +807,7 @@ CBudgetProposal::CBudgetProposal(std::string strProposalNameIn, std::string strU
     nAmount = nAmountIn;
     nFeeTXHash = nFeeTXHashIn;
     fValid = true;
+    strInvalid = "";
 }
 
 CBudgetProposal::CBudgetProposal(const CBudgetProposal& other)
@@ -829,48 +822,48 @@ CBudgetProposal::CBudgetProposal(const CBudgetProposal& other)
     nFeeTXHash = other.nFeeTXHash;
     mapVotes = other.mapVotes;
     fValid = true;
+    strInvalid = "";
 }
 
-bool CBudgetProposal::IsValid(std::string& strError, bool fCheckCollateral)
+bool CBudgetProposal::UpdateValid(int& nConf, bool fSkipCollateral)
 {
+    fValid = false;
     if (GetNays() - GetYeas() > mnodeman.CountEnabled(ActiveProtocol()) / 10) {
-        strError = "Proposal " + strProposalName + ": Active removal";
+        strInvalid = "Proposal " + strProposalName + ": Active removal";
         return false;
     }
 
     if (nBlockStart < 0) {
-        strError = "Invalid Proposal";
+        strInvalid = "Invalid Proposal";
         return false;
     }
 
     if (nBlockEnd < nBlockStart) {
-        strError = "Proposal " + strProposalName + ": Invalid nBlockEnd (end before start)";
+        strInvalid = "Proposal " + strProposalName + ": Invalid nBlockEnd (end before start)";
         return false;
     }
 
     if (nAmount < 10 * COIN) {
-        strError = "Proposal " + strProposalName + ": Invalid nAmount";
+        strInvalid = "Proposal " + strProposalName + ": Invalid nAmount";
         return false;
     }
 
     if (address == CScript()) {
-        strError = "Proposal " + strProposalName + ": Invalid Payment Address";
+        strInvalid = "Proposal " + strProposalName + ": Invalid Payment Address";
         return false;
     }
 
-    if (fCheckCollateral) {
-        int nConf = 0;
-        if (!IsBudgetCollateralValid(nFeeTXHash, GetHash(), strError, nTime, nConf)) {
-            strError = "Proposal " + strProposalName + ": Invalid collateral";
-            return false;
-        }
+    std::string strError = "";
+    if (!fSkipCollateral && !IsBudgetCollateralValid(nFeeTXHash, GetHash(), strError, nTime, nConf)) {
+        strInvalid = "Proposal " + strProposalName + ": Invalid collateral - " + strError;
+        return false;
     }
 
     /*
         TODO: There might be an issue with multisig in the coinbase on mainnet, we will add support for it in a future release.
     */
     if (address.IsPayToScriptHash()) {
-        strError = "Proposal " + strProposalName + ": Multisig is not currently supported.";
+        strInvalid = "Proposal " + strProposalName + ": Multisig is not currently supported.";
         return false;
     }
 
@@ -886,14 +879,14 @@ bool CBudgetProposal::IsValid(std::string& strError, bool fCheckCollateral)
 
     //can only pay out 10% of the possible coins (min value of coins)
     if (nAmount > governanceManager.GetTotalBudget(nBlockStart)) {
-        strError = "Proposal " + strProposalName + ": Payment more than max";
+        strInvalid = "Proposal " + strProposalName + ": Payment more than max";
         return false;
     }
 
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (pindexPrev == NULL) {
-        strError = "Proposal " + strProposalName + ": Tip is NULL";
-        return true;
+        strInvalid = "Proposal " + strProposalName + ": Tip is NULL";
+        return false;
     }
 
     // Calculate maximum block this proposal will be valid, which is start of proposal + (number of payments * cycle)
@@ -901,11 +894,12 @@ bool CBudgetProposal::IsValid(std::string& strError, bool fCheckCollateral)
 
     // if (GetBlockEnd() < pindexPrev->nHeight - GetBudgetPaymentCycleBlocks() / 2) {
     if(nProposalEnd < pindexPrev->nHeight){
-        strError = "Proposal " + strProposalName + ": Invalid nBlockEnd (" + std::to_string(nProposalEnd) + ") < current height (" + std::to_string(pindexPrev->nHeight) + ")";
+        strInvalid = "Proposal " + strProposalName + ": Invalid nBlockEnd (" + std::to_string(nProposalEnd) + ") < current height (" + std::to_string(pindexPrev->nHeight) + ")";
         return false;
     }
 
-    return true;
+    fValid = true;
+    return fValid;
 }
 
 bool CBudgetProposal::IsEstablished() const

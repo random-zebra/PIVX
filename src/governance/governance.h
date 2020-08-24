@@ -172,6 +172,7 @@ public:
     CAmount nAmount;
     CScript address;
     int64_t nTime;
+    std::string strInvalid;
     uint256 nFeeTXHash;
 
     std::map<uint256, CBudgetVote> mapVotes;
@@ -186,7 +187,13 @@ public:
     bool HasMinimumRequiredSupport();
     std::pair<std::string, std::string> GetVotes();
 
-    bool IsValid(std::string& strError, bool fCheckCollateral = true);
+    /*
+     * set fValid and strInvalid. return fValid
+     * if fSkipCollateral is false (default), set also nTime and nConf
+     */
+    bool UpdateValid(int& nConf, bool fSkipCollateral = false);
+    bool IsValid() const { return fValid; }
+    std::string IsInvalidReason() const { return strInvalid; }
 
     bool IsEstablished() const;
     bool IsPassing(const CBlockIndex* pindexPrev, int nBlockStartBudget, int nBlockEndBudget, int mnCount);
