@@ -289,9 +289,9 @@ CBudgetProposal* CGovernanceManager::FindProposal(const std::string& strProposal
     //find the prop with the highest yes count
 
     int nYesCount = -99999;
-    CBudgetProposal* pbudgetProposal = NULL;
+    CBudgetProposal* pbudgetProposal = nullptr;
 
-    std::map<uint256, CBudgetProposal>::iterator it = mapProposals.begin();
+    auto it = mapProposals.begin();
     while (it != mapProposals.end()) {
         if ((*it).second.strProposalName == strProposalName && (*it).second.GetYeas() > nYesCount) {
             pbudgetProposal = &((*it).second);
@@ -300,19 +300,16 @@ CBudgetProposal* CGovernanceManager::FindProposal(const std::string& strProposal
         ++it;
     }
 
-    if (nYesCount == -99999) return NULL;
+    if (nYesCount == -99999) return nullptr;
 
     return pbudgetProposal;
 }
 
-CBudgetProposal* CGovernanceManager::FindProposal(uint256 nHash)
+CBudgetProposal* CGovernanceManager::FindProposal(const uint256& nHash)
 {
     LOCK(cs);
-
-    if (mapProposals.count(nHash))
-        return &mapProposals[nHash];
-
-    return NULL;
+    auto it = mapProposals.find(nHash);
+    return (it != mapProposals.end() ? &it->second : nullptr);
 }
 
 std::vector<CBudgetProposal*> CGovernanceManager::GetAllProposals()
@@ -321,7 +318,7 @@ std::vector<CBudgetProposal*> CGovernanceManager::GetAllProposals()
 
     std::vector<CBudgetProposal*> vBudgetProposalRet;
 
-    std::map<uint256, CBudgetProposal>::iterator it = mapProposals.begin();
+    auto it = mapProposals.begin();
     while (it != mapProposals.end()) {
         (*it).second.CleanAndRemove();
 
@@ -332,6 +329,51 @@ std::vector<CBudgetProposal*> CGovernanceManager::GetAllProposals()
     }
 
     return vBudgetProposalRet;
+}
+
+bool CGovernanceManager::HaveSeenProposal(const uint256& hash) const
+{
+    LOCK(cs);
+    auto it = mapSeenMasternodeBudgetProposals.find(hash);
+    return it != mapSeenMasternodeBudgetProposals.end();
+}
+
+bool CGovernanceManager::HaveSeenVote(const uint256& hash) const
+{
+    LOCK(cs);
+    auto it = mapSeenMasternodeBudgetVotes.find(hash);
+    return it != mapSeenMasternodeBudgetVotes.end();
+}
+
+
+void CGovernanceManager::AddSeenProposal(CBudgetProposal& budgetProposal)
+{
+    LOCK(cs);
+    mapSeenMasternodeBudgetProposals.insert(std::make_pair(budgetProposal.GetHash(), budgetProposal));
+}
+
+void CGovernanceManager::AddSeenVote(CBudgetVote& vote)
+{
+    LOCK(cs);
+    mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+}
+
+CDataStream CGovernanceManager::GetProposalSerialized(const uint256& hash) const
+{
+    LOCK(cs);
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss.reserve(1000);
+    ss << mapSeenMasternodeBudgetProposals.at(hash);
+    return ss;
+}
+
+CDataStream CGovernanceManager::GetVoteSerialized(const uint256& hash) const
+{
+    LOCK(cs);
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss.reserve(1000);
+    ss << mapSeenMasternodeBudgetVotes.at(hash);
+    return ss;
 }
 
 //
@@ -355,7 +397,7 @@ std::vector<CBudgetProposal*> CGovernanceManager::GetBudget()
 
     std::vector<std::pair<CBudgetProposal*, int> > vBudgetPorposalsSort;
 
-    std::map<uint256, CBudgetProposal>::iterator it = mapProposals.begin();
+    auto it = mapProposals.begin();
     while (it != mapProposals.end()) {
         (*it).second.CleanAndRemove();
         vBudgetPorposalsSort.push_back(std::make_pair(&((*it).second), (*it).second.GetYeas() - (*it).second.GetNays()));
@@ -584,7 +626,6 @@ void CGovernanceManager::ProcessMessage(CNode* pfrom, std::string& strCommand, C
 void CGovernanceManager::ResetSync()
 {
     LOCK(cs);
-
 
     auto it_proposals = mapSeenMasternodeBudgetProposals.begin();
     while (it_proposals != mapSeenMasternodeBudgetProposals.end()) {

@@ -99,7 +99,14 @@ public:
         mapSeenFinalizedBudgetVotes.clear();
     }
 
-    int sizeFinalized() { return (int)mapFinalizedBudgets.size(); }
+    bool HaveSeenFinalizedBudget(const uint256& hash) const;
+    bool HaveSeenFinalizedVote(const uint256& hash) const;
+
+    // hash must be in relative map (proposal/votes)
+    CDataStream GetFinalizedBudgetSerialized(const uint256& hash) const;
+    CDataStream GetFinalizedVoteSerialized(const uint256& hash) const;
+
+    int sizeFinalized() const { return (int)mapFinalizedBudgets.size(); }
 
     void ResetSync();
     void MarkSynced();
@@ -115,10 +122,10 @@ public:
     void SubmitFinalBudget();
     bool UpdateFinalizedBudget(CFinalizedBudgetVote& vote, CNode* pfrom, std::string& strError);
 
-    bool IsBudgetPaymentBlock(int nBlockHeight);
-    TrxValidationStatus IsTransactionValid(const CTransaction& txNew, int nBlockHeight);
-    std::string GetRequiredPaymentsString(int nBlockHeight);
-    void FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake);
+    bool IsBudgetPaymentBlock(int nBlockHeight) const;
+    TrxValidationStatus IsTransactionValid(const CTransaction& txNew, int nBlockHeight) const;
+    std::string GetRequiredPaymentsString(int nBlockHeight) const;
+    void FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake) const;
 
     void CheckOrphanVotes();
     void Clear()
@@ -247,14 +254,14 @@ public:
 
     bool IsValid(std::string& strError, bool fCheckCollateral = true);
 
-    std::string GetName() { return strBudgetName; }
-    std::string GetProposals();
-    int GetBlockStart() { return nBlockStart; }
-    int GetBlockEnd() { return nBlockStart + (int)(vecBudgetPayments.size() - 1); }
-    int GetVoteCount() { return (int)mapVotes.size(); }
-    bool IsPaidAlready(uint256 nProposalHash, int nBlockHeight);
-    TrxValidationStatus IsTransactionValid(const CTransaction& txNew, int nBlockHeight);
-    bool GetBudgetPaymentByBlock(int64_t nBlockHeight, CTxBudgetPayment& payment)
+    std::string GetName() const { return strBudgetName; }
+    std::string GetProposals() const;
+    int GetBlockStart() const { return nBlockStart; }
+    int GetBlockEnd() const { return nBlockStart + (int)(vecBudgetPayments.size() - 1); }
+    int GetVoteCount() const { return (int)mapVotes.size(); }
+    bool IsPaidAlready(uint256 nProposalHash, int nBlockHeight) const;
+    TrxValidationStatus IsTransactionValid(const CTransaction& txNew, int nBlockHeight) const;
+    bool GetBudgetPaymentByBlock(int64_t nBlockHeight, CTxBudgetPayment& payment) const
     {
         LOCK(cs);
 
@@ -264,7 +271,7 @@ public:
         payment = vecBudgetPayments[i];
         return true;
     }
-    bool GetPayeeAndAmount(int64_t nBlockHeight, CScript& payee, CAmount& nAmount)
+    bool GetPayeeAndAmount(int64_t nBlockHeight, CScript& payee, CAmount& nAmount) const
     {
         LOCK(cs);
 
@@ -279,14 +286,14 @@ public:
     // Verify and vote on finalized budget
     void CheckAndVote();
     //total pivx paid out by this budget
-    CAmount GetTotalPayout();
+    CAmount GetTotalPayout() const;
     //vote on this finalized budget as a masternode
     void SubmitVote();
 
     //checks the hashes to make sure we know about them
     std::string GetStatus();
 
-    uint256 GetHash()
+    uint256 GetHash() const
     {
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << strBudgetName;

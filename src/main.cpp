@@ -4936,25 +4936,25 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         }
         return false;
     case MSG_BUDGET_VOTE:
-        if (governanceManager.mapSeenMasternodeBudgetVotes.count(inv.hash)) {
+        if (governanceManager.HaveSeenVote(inv.hash)) {
             masternodeSync.AddedBudgetItem(inv.hash);
             return true;
         }
         return false;
     case MSG_BUDGET_PROPOSAL:
-        if (governanceManager.mapSeenMasternodeBudgetProposals.count(inv.hash)) {
+        if (governanceManager.HaveSeenProposal(inv.hash)) {
             masternodeSync.AddedBudgetItem(inv.hash);
             return true;
         }
         return false;
     case MSG_BUDGET_FINALIZED_VOTE:
-        if (budgetManager.mapSeenFinalizedBudgetVotes.count(inv.hash)) {
+        if (budgetManager.HaveSeenFinalizedVote(inv.hash)) {
             masternodeSync.AddedBudgetItem(inv.hash);
             return true;
         }
         return false;
     case MSG_BUDGET_FINALIZED:
-        if (budgetManager.mapSeenFinalizedBudgets.count(inv.hash)) {
+        if (budgetManager.HaveSeenFinalizedBudget(inv.hash)) {
             masternodeSync.AddedBudgetItem(inv.hash);
             return true;
         }
@@ -5107,41 +5107,29 @@ void static ProcessGetData(CNode* pfrom)
                     }
                 }
                 if (!pushed && inv.type == MSG_BUDGET_VOTE) {
-                    if (governanceManager.mapSeenMasternodeBudgetVotes.count(inv.hash)) {
-                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000);
-                        ss << governanceManager.mapSeenMasternodeBudgetVotes[inv.hash];
-                        pfrom->PushMessage(NetMsgType::BUDGETVOTE, ss);
+                    if (governanceManager.HaveSeenVote(inv.hash)) {
+                        pfrom->PushMessage(NetMsgType::BUDGETVOTE, governanceManager.GetVoteSerialized(inv.hash));
                         pushed = true;
                     }
                 }
 
                 if (!pushed && inv.type == MSG_BUDGET_PROPOSAL) {
-                    if (governanceManager.mapSeenMasternodeBudgetProposals.count(inv.hash)) {
-                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000);
-                        ss << governanceManager.mapSeenMasternodeBudgetProposals[inv.hash];
-                        pfrom->PushMessage(NetMsgType::BUDGETPROPOSAL, ss);
+                    if (governanceManager.HaveSeenProposal(inv.hash)) {
+                        pfrom->PushMessage(NetMsgType::BUDGETPROPOSAL, governanceManager.GetProposalSerialized(inv.hash));
                         pushed = true;
                     }
                 }
 
                 if (!pushed && inv.type == MSG_BUDGET_FINALIZED_VOTE) {
-                    if (budgetManager.mapSeenFinalizedBudgetVotes.count(inv.hash)) {
-                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000);
-                        ss << budgetManager.mapSeenFinalizedBudgetVotes[inv.hash];
-                        pfrom->PushMessage(NetMsgType::FINALBUDGETVOTE, ss);
+                    if (budgetManager.HaveSeenFinalizedVote(inv.hash)) {
+                        pfrom->PushMessage(NetMsgType::FINALBUDGETVOTE, budgetManager.GetFinalizedVoteSerialized(inv.hash));
                         pushed = true;
                     }
                 }
 
                 if (!pushed && inv.type == MSG_BUDGET_FINALIZED) {
-                    if (budgetManager.mapSeenFinalizedBudgets.count(inv.hash)) {
-                        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                        ss.reserve(1000);
-                        ss << budgetManager.mapSeenFinalizedBudgets[inv.hash];
-                        pfrom->PushMessage(NetMsgType::FINALBUDGET, ss);
+                    if (budgetManager.HaveSeenFinalizedBudget(inv.hash)) {
+                        pfrom->PushMessage(NetMsgType::FINALBUDGET, budgetManager.GetFinalizedBudgetSerialized(inv.hash));
                         pushed = true;
                     }
                 }
