@@ -21,7 +21,7 @@
 
 #include <fstream>
 
-void budgetToJSON(CBudgetProposal* pbudgetProposal, UniValue& bObj)
+void budgetToJSON(const CBudgetProposal* pbudgetProposal, UniValue& bObj)
 {
     CTxDestination address1;
     ExtractDestination(pbudgetProposal->GetPayee(), address1);
@@ -43,10 +43,12 @@ void budgetToJSON(CBudgetProposal* pbudgetProposal, UniValue& bObj)
     bObj.push_back(Pair("MonthlyPayment", ValueFromAmount(pbudgetProposal->GetAmount())));
     bObj.push_back(Pair("IsEstablished", pbudgetProposal->IsEstablished()));
 
+    /* !TODO: un-comment when IsValid is const
     std::string strError = "";
     bObj.push_back(Pair("IsValid", pbudgetProposal->IsValid(strError)));
     bObj.push_back(Pair("IsValidReason", strError.c_str()));
     bObj.push_back(Pair("fValid", pbudgetProposal->fValid));
+    */
 }
 
 void checkBudgetInputs(const UniValue& params, std::string &strProposalName, std::string &strURL,
@@ -516,27 +518,9 @@ UniValue getbudgetvotes(const JSONRPCRequest& request)
 
     std::string strProposalName = SanitizeString(request.params[0].get_str());
 
-    UniValue ret(UniValue::VARR);
-
-    CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(strProposalName);
-
+    const CBudgetProposal* pbudgetProposal = governanceManager.GetProposal(strProposalName);
     if (pbudgetProposal == NULL) throw std::runtime_error("Unknown proposal name");
-
-    std::map<uint256, CBudgetVote>::iterator it = pbudgetProposal->mapVotes.begin();
-    while (it != pbudgetProposal->mapVotes.end()) {
-        UniValue bObj(UniValue::VOBJ);
-        bObj.push_back(Pair("mnId", (*it).second.vin.prevout.hash.ToString()));
-        bObj.push_back(Pair("nHash", (*it).first.ToString().c_str()));
-        bObj.push_back(Pair("Vote", (*it).second.GetVoteString()));
-        bObj.push_back(Pair("nTime", (int64_t)(*it).second.nTime));
-        bObj.push_back(Pair("fValid", (*it).second.fValid));
-
-        ret.push_back(bObj);
-
-        it++;
-    }
-
-    return ret;
+    return pbudgetProposal->GetVotesArray();
 }
 
 UniValue getnextsuperblock(const JSONRPCRequest& request)
@@ -664,7 +648,7 @@ UniValue getbudgetinfo(const JSONRPCRequest& request)
     std::string strShow = "valid";
     if (request.params.size() == 1) {
         std::string strProposalName = SanitizeString(request.params[0].get_str());
-        CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(strProposalName);
+        const CBudgetProposal* pbudgetProposal = governanceManager.GetProposal(strProposalName);
         if (pbudgetProposal == NULL) throw std::runtime_error("Unknown proposal name");
         UniValue bObj(UniValue::VOBJ);
         budgetToJSON(pbudgetProposal, bObj);
