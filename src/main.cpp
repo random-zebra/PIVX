@@ -3414,7 +3414,7 @@ bool CheckColdStakeFreeOutput(const CTransaction& tx, const int nHeight)
         }
 
         // Check that this is indeed a superblock.
-        if (governanceManager.IsBudgetPaymentBlock(nHeight)) {
+        if (budgetManager.IsBudgetPaymentBlock(nHeight)) {
             // if superblocks are not enabled, reject
             if (!sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS))
                 return error("%s: superblocks are not enabled", __func__);
@@ -4210,6 +4210,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, const CBlock* pblock
         if (masternodeSync.RequestedMasternodeAssets > MASTERNODE_SYNC_LIST) {
             masternodePayments.ProcessBlock(GetHeight() + 10);
             governanceManager.NewBlock();
+            budgetManager.NewBlock();
         }
     }
 
@@ -4941,13 +4942,13 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         }
         return false;
     case MSG_BUDGET_FINALIZED_VOTE:
-        if (governanceManager.mapSeenFinalizedBudgetVotes.count(inv.hash)) {
+        if (budgetManager.mapSeenFinalizedBudgetVotes.count(inv.hash)) {
             masternodeSync.AddedBudgetItem(inv.hash);
             return true;
         }
         return false;
     case MSG_BUDGET_FINALIZED:
-        if (governanceManager.mapSeenFinalizedBudgets.count(inv.hash)) {
+        if (budgetManager.mapSeenFinalizedBudgets.count(inv.hash)) {
             masternodeSync.AddedBudgetItem(inv.hash);
             return true;
         }
@@ -5168,20 +5169,20 @@ void static ProcessGetData(CNode* pfrom, CConnman& connman, std::atomic<bool>& i
                 }
 
                 if (!pushed && inv.type == MSG_BUDGET_FINALIZED_VOTE) {
-                    if (governanceManager.mapSeenFinalizedBudgetVotes.count(inv.hash)) {
+                    if (budgetManager.mapSeenFinalizedBudgetVotes.count(inv.hash)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << governanceManager.mapSeenFinalizedBudgetVotes[inv.hash];
+                        ss << budgetManager.mapSeenFinalizedBudgetVotes[inv.hash];
                         pfrom->PushMessage(NetMsgType::FINALBUDGETVOTE, ss);
                         pushed = true;
                     }
                 }
 
                 if (!pushed && inv.type == MSG_BUDGET_FINALIZED) {
-                    if (governanceManager.mapSeenFinalizedBudgets.count(inv.hash)) {
+                    if (budgetManager.mapSeenFinalizedBudgets.count(inv.hash)) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << governanceManager.mapSeenFinalizedBudgets[inv.hash];
+                        ss << budgetManager.mapSeenFinalizedBudgets[inv.hash];
                         pfrom->PushMessage(NetMsgType::FINALBUDGET, ss);
                         pushed = true;
                     }
