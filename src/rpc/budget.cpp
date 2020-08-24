@@ -87,8 +87,8 @@ void checkBudgetInputs(const UniValue& params, std::string &strProposalName, std
     if (nAmount < 10 * COIN)
         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount - Payment of %s is less than minimum 10 %s allowed", FormatMoney(nAmount), CURRENCY_UNIT));
 
-    if (nAmount > budget.GetTotalBudget(nBlockStart))
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount - Payment of %s more than max of %s", FormatMoney(nAmount), FormatMoney(budget.GetTotalBudget(nBlockStart))));
+    if (nAmount > governanceManager.GetTotalBudget(nBlockStart))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid amount - Payment of %s more than max of %s", FormatMoney(nAmount), FormatMoney(governanceManager.GetTotalBudget(nBlockStart))));
 }
 
 UniValue preparebudget(const JSONRPCRequest& request)
@@ -216,9 +216,9 @@ UniValue submitbudget(const JSONRPCRequest& request)
     //     return "Proposal is not valid - " + budgetProposalBroadcast.GetHash().ToString() + " - " + strError;
     // }
 
-    budget.mapSeenMasternodeBudgetProposals.insert(std::make_pair(budgetProposalBroadcast.GetHash(), budgetProposalBroadcast));
+    governanceManager.mapSeenMasternodeBudgetProposals.insert(std::make_pair(budgetProposalBroadcast.GetHash(), budgetProposalBroadcast));
     budgetProposalBroadcast.Relay();
-    if(budget.AddProposal(budgetProposalBroadcast)) {
+    if(governanceManager.AddProposal(budgetProposalBroadcast)) {
         return budgetProposalBroadcast.GetHash().ToString();
     }
     throw std::runtime_error("Invalid proposal, see debug.log for details.");
@@ -322,9 +322,9 @@ UniValue mnbudgetvote(const JSONRPCRequest& request)
             }
 
             std::string strError = "";
-            if (budget.UpdateProposal(vote, NULL, strError)) {
+            if (governanceManager.UpdateProposal(vote, NULL, strError)) {
                 success++;
-                budget.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+                governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
                 vote.Relay();
                 statusObj.push_back(Pair("node", "local"));
                 statusObj.push_back(Pair("result", "success"));
@@ -388,8 +388,8 @@ UniValue mnbudgetvote(const JSONRPCRequest& request)
             }
 
             std::string strError = "";
-            if (budget.UpdateProposal(vote, NULL, strError)) {
-                budget.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+            if (governanceManager.UpdateProposal(vote, NULL, strError)) {
+                governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
                 vote.Relay();
                 success++;
                 statusObj.push_back(Pair("node", mne.getAlias()));
@@ -462,8 +462,8 @@ UniValue mnbudgetvote(const JSONRPCRequest& request)
             }
 
             std::string strError = "";
-            if(budget.UpdateProposal(vote, NULL, strError)) {
-                budget.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+            if(governanceManager.UpdateProposal(vote, NULL, strError)) {
+                governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
                 vote.Relay();
                 success++;
                 statusObj.push_back(Pair("node", mne.getAlias()));
@@ -518,7 +518,7 @@ UniValue getbudgetvotes(const JSONRPCRequest& request)
 
     UniValue ret(UniValue::VARR);
 
-    CBudgetProposal* pbudgetProposal = budget.FindProposal(strProposalName);
+    CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(strProposalName);
 
     if (pbudgetProposal == NULL) throw std::runtime_error("Unknown proposal name");
 
@@ -602,7 +602,7 @@ UniValue getbudgetprojection(const JSONRPCRequest& request)
     UniValue resultObj(UniValue::VOBJ);
     CAmount nTotalAllotted = 0;
 
-    std::vector<CBudgetProposal*> winningProps = budget.GetBudget();
+    std::vector<CBudgetProposal*> winningProps = governanceManager.GetBudget();
     for (CBudgetProposal* pbudgetProposal : winningProps) {
         nTotalAllotted += pbudgetProposal->GetAllotted();
 
@@ -664,7 +664,7 @@ UniValue getbudgetinfo(const JSONRPCRequest& request)
     std::string strShow = "valid";
     if (request.params.size() == 1) {
         std::string strProposalName = SanitizeString(request.params[0].get_str());
-        CBudgetProposal* pbudgetProposal = budget.FindProposal(strProposalName);
+        CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(strProposalName);
         if (pbudgetProposal == NULL) throw std::runtime_error("Unknown proposal name");
         UniValue bObj(UniValue::VOBJ);
         budgetToJSON(pbudgetProposal, bObj);
@@ -672,7 +672,7 @@ UniValue getbudgetinfo(const JSONRPCRequest& request)
         return ret;
     }
 
-    std::vector<CBudgetProposal*> winningProps = budget.GetAllProposals();
+    std::vector<CBudgetProposal*> winningProps = governanceManager.GetAllProposals();
     for (CBudgetProposal* pbudgetProposal : winningProps) {
         if (strShow == "valid" && !pbudgetProposal->fValid) continue;
 
@@ -742,8 +742,8 @@ UniValue mnbudgetrawvote(const JSONRPCRequest& request)
     }
 
     std::string strError = "";
-    if (budget.UpdateProposal(vote, NULL, strError)) {
-        budget.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+    if (governanceManager.UpdateProposal(vote, NULL, strError)) {
+        governanceManager.mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
         vote.Relay();
         return "Voted successfully";
     } else {
@@ -820,8 +820,8 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
             }
 
             std::string strError = "";
-            if (budget.UpdateFinalizedBudget(vote, NULL, strError)) {
-                budget.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+            if (governanceManager.UpdateFinalizedBudget(vote, NULL, strError)) {
+                governanceManager.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
                 vote.Relay();
                 success++;
                 statusObj.push_back(Pair("result", "success"));
@@ -870,8 +870,8 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
         }
 
         std::string strError = "";
-        if (budget.UpdateFinalizedBudget(vote, NULL, strError)) {
-            budget.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+        if (governanceManager.UpdateFinalizedBudget(vote, NULL, strError)) {
+            governanceManager.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
             vote.Relay();
             return "success";
         } else {
@@ -882,7 +882,7 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
     if (strCommand == "show") {
         UniValue resultObj(UniValue::VOBJ);
 
-        std::vector<CFinalizedBudget*> winningFbs = budget.GetFinalizedBudgets();
+        std::vector<CFinalizedBudget*> winningFbs = governanceManager.GetFinalizedBudgets();
         for (CFinalizedBudget* finalizedBudget : winningFbs) {
             UniValue bObj(UniValue::VOBJ);
             bObj.push_back(Pair("FeeTX", finalizedBudget->nFeeTXHash.ToString()));
@@ -912,7 +912,7 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
 
         UniValue obj(UniValue::VOBJ);
 
-        CFinalizedBudget* pfinalBudget = budget.FindFinalizedBudget(hash);
+        CFinalizedBudget* pfinalBudget = governanceManager.FindFinalizedBudget(hash);
 
         if (pfinalBudget == NULL) return "Unknown budget hash";
 
@@ -944,7 +944,7 @@ UniValue checkbudgets(const JSONRPCRequest& request)
             "\nExamples:\n" +
             HelpExampleCli("checkbudgets", "") + HelpExampleRpc("checkbudgets", ""));
 
-    budget.CheckAndRemove();
+    governanceManager.CheckAndRemove();
 
     return NullUniValue;
 }
