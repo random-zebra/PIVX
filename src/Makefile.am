@@ -180,6 +180,7 @@ BITCOIN_CORE_H = \
   denomination_functions.h \
   wallet/db.h \
   fs.h \
+  governance/governance.h \
   hash.h \
   httprpc.h \
   httpserver.h \
@@ -476,6 +477,7 @@ libbitcoin_common_a_SOURCES = \
   zpiv/zerocoin.cpp \
   core_read.cpp \
   core_write.cpp \
+  governance/governance.cpp \
   hash.cpp \
   invalid.cpp \
   key.cpp \
