@@ -2005,7 +2005,7 @@ bool AppInit2()
     uiInterface.InitMessage(_("Loading budget cache..."));
 
     CBudgetDB budgetdb;
-    CBudgetDB::ReadResult readResult2 = budgetdb.Read(budget);
+    CBudgetDB::ReadResult readResult2 = budgetdb.Read(governanceManager);
 
     if (readResult2 == CBudgetDB::FileError)
         LogPrintf("Missing budget cache - budget.dat, will try to recreate\n");
@@ -2018,8 +2018,8 @@ bool AppInit2()
     }
 
     //flag our cached items so we send them to our peers
-    budget.ResetSync();
-    budget.ClearSeen();
+    governanceManager.ResetSync();
+    governanceManager.ClearSeen();
 
 
     uiInterface.InitMessage(_("Loading masternode payment cache..."));

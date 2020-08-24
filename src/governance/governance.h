@@ -19,7 +19,7 @@
 
 extern RecursiveMutex cs_budget;
 
-class CBudgetManager;
+class CGovernanceManager;
 class CBudgetProposalBroadcast;
 class CBudgetVote;
 class CBudgetProposal;
@@ -46,7 +46,7 @@ static std::map<uint256, int> mapPayment_History;
 
 extern std::vector<CBudgetProposalBroadcast> vecImmatureBudgetProposals;
 
-extern CBudgetManager budget;
+extern CGovernanceManager governanceManager;
 void DumpBudgets();
 
 //Check the collateral transaction for the budget proposal/finalized budget
@@ -73,14 +73,14 @@ public:
     };
 
     CBudgetDB();
-    bool Write(const CBudgetManager& objToSave);
-    ReadResult Read(CBudgetManager& objToLoad, bool fDryRun = false);
+    bool Write(const CGovernanceManager& objToSave);
+    ReadResult Read(CGovernanceManager& objToLoad, bool fDryRun = false);
 };
 
 /*
  * Budget Manager : Contains all proposals for the budget
  */
-class CBudgetManager
+class CGovernanceManager
 {
 private:
     //hold txes until they mature enough to use
@@ -102,7 +102,7 @@ public:
     std::map<uint256, CFinalizedBudgetVote> mapSeenFinalizedBudgetVotes;
     std::map<uint256, CFinalizedBudgetVote> mapOrphanFinalizedBudgetVotes;
 
-    CBudgetManager()
+    CGovernanceManager()
     {
         mapProposals.clear();
         mapFinalizedBudgets.clear();

@@ -116,7 +116,7 @@ void CFinalizedBudget::CheckAndVote()
 
     if (strBudgetMode == "auto") //only vote for exact matches
     {
-        std::vector<CBudgetProposal*> vBudgetProposals = budget.GetBudget();
+        std::vector<CBudgetProposal*> vBudgetProposals = governanceManager.GetBudget();
 
         // We have to resort the proposals by hash (they are sorted by votes here) and sort the payments
         // by hash (they are not sorted at all) to make the following tests deterministic
@@ -210,7 +210,7 @@ std::string CFinalizedBudget::GetProposals()
     std::string ret = "";
 
     for (CTxBudgetPayment& budgetPayment : vecBudgetPayments) {
-        CBudgetProposal* pbudgetProposal = budget.FindProposal(budgetPayment.nProposalHash);
+        CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(budgetPayment.nProposalHash);
 
         std::string token = budgetPayment.nProposalHash.ToString();
 
@@ -236,7 +236,7 @@ std::string CFinalizedBudget::GetStatus()
             continue;
         }
 
-        CBudgetProposal* pbudgetProposal = budget.FindProposal(budgetPayment.nProposalHash);
+        CBudgetProposal* pbudgetProposal = governanceManager.FindProposal(budgetPayment.nProposalHash);
         if (!pbudgetProposal) {
             if (retBadHashes == "") {
                 retBadHashes = "Unknown proposal hash! Check this proposal before voting: " + budgetPayment.nProposalHash.ToString();
@@ -294,7 +294,7 @@ bool CFinalizedBudget::IsValid(std::string& strError, bool fCheckCollateral)
     }
 
     // Can only pay out 10% of the possible coins (min value of coins)
-    if (GetTotalPayout() > budget.GetTotalBudget(nBlockStart)) {
+    if (GetTotalPayout() > governanceManager.GetTotalBudget(nBlockStart)) {
         strError = "Budget " + strBudgetName + " (" + strProposals + ") Invalid Payout (more than max)";
         return false;
     }
@@ -433,10 +433,10 @@ void CFinalizedBudget::SubmitVote()
         return;
     }
 
-    if (budget.UpdateFinalizedBudget(vote, NULL, strError)) {
+    if (governanceManager.UpdateFinalizedBudget(vote, NULL, strError)) {
         LogPrint(BCLog::MNBUDGET,"CFinalizedBudget::SubmitVote  - new finalized budget vote - %s\n", vote.GetHash().ToString());
 
-        budget.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+        governanceManager.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
         vote.Relay();
     } else {
         LogPrint(BCLog::MNBUDGET,"CFinalizedBudget::SubmitVote : Error submitting vote - %s\n", strError);

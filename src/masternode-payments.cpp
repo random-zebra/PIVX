@@ -262,7 +262,7 @@ bool IsBlockValueValid(const CBlock& block, CAmount nExpectedValue, CAmount nMin
             return nMinted <= nExpectedValue;
         }
 
-        if (budget.IsBudgetPaymentBlock(nHeight)) {
+        if (governanceManager.IsBudgetPaymentBlock(nHeight)) {
             //the value of the block is evaluated in CheckBlock
             return true;
         } else {
@@ -289,8 +289,8 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
 
     //check if it's a budget block
     if (sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS)) {
-        if (budget.IsBudgetPaymentBlock(nBlockHeight)) {
-            transactionStatus = budget.IsTransactionValid(txNew, nBlockHeight);
+        if (governanceManager.IsBudgetPaymentBlock(nBlockHeight)) {
+            transactionStatus = governanceManager.IsTransactionValid(txNew, nBlockHeight);
             if (transactionStatus == TrxValidationStatus::Valid) {
                 return true;
             }
@@ -327,8 +327,8 @@ void FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStak
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (!pindexPrev) return;
 
-    if (sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) && budget.IsBudgetPaymentBlock(pindexPrev->nHeight + 1)) {
-        budget.FillBlockPayee(txNew, nFees, fProofOfStake);
+    if (sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) && governanceManager.IsBudgetPaymentBlock(pindexPrev->nHeight + 1)) {
+        governanceManager.FillBlockPayee(txNew, nFees, fProofOfStake);
     } else {
         masternodePayments.FillBlockPayee(txNew, nFees, fProofOfStake, fZPIVStake);
     }
@@ -336,8 +336,8 @@ void FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStak
 
 std::string GetRequiredPaymentsString(int nBlockHeight)
 {
-    if (sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) && budget.IsBudgetPaymentBlock(nBlockHeight)) {
-        return budget.GetRequiredPaymentsString(nBlockHeight);
+    if (sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) && governanceManager.IsBudgetPaymentBlock(nBlockHeight)) {
+        return governanceManager.GetRequiredPaymentsString(nBlockHeight);
     } else {
         return masternodePayments.GetRequiredPaymentsString(nBlockHeight);
     }
@@ -711,7 +711,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     CMasternodePaymentWinner newWinner(*(activeMasternode.vin));
 
-    if (budget.IsBudgetPaymentBlock(nBlockHeight)) {
+    if (governanceManager.IsBudgetPaymentBlock(nBlockHeight)) {
         //is budget payment block -- handled by the budgeting software
     } else {
         LogPrint(BCLog::MASTERNODE,"CMasternodePayments::ProcessBlock() Start nHeight %d - vin %s. \n", nBlockHeight, activeMasternode.vin->prevout.hash.ToString());
