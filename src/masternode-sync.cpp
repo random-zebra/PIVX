@@ -6,6 +6,7 @@
 // clang-format off
 #include "main.h"
 #include "activemasternode.h"
+#include "governance/governance.h"
 #include "masternode-sync.h"
 #include "masternode-payments.h"
 #include "masternode-budget.h"
@@ -135,8 +136,8 @@ void CMasternodeSync::AddedBudgetItem(uint256 hash)
 {
     if (governanceManager.mapSeenMasternodeBudgetProposals.count(hash) ||
             governanceManager.mapSeenMasternodeBudgetVotes.count(hash) ||
-            governanceManager.mapSeenFinalizedBudgets.count(hash) ||
-            governanceManager.mapSeenFinalizedBudgetVotes.count(hash)) {
+            budgetManager.mapSeenFinalizedBudgets.count(hash) ||
+            budgetManager.mapSeenFinalizedBudgetVotes.count(hash)) {
         if (mapSeenSyncBudget[hash] < MASTERNODE_SYNC_THRESHOLD) {
             lastBudgetItem = GetTime();
             mapSeenSyncBudget[hash]++;

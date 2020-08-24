@@ -820,8 +820,8 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
             }
 
             std::string strError = "";
-            if (governanceManager.UpdateFinalizedBudget(vote, NULL, strError)) {
-                governanceManager.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+            if (budgetManager.UpdateFinalizedBudget(vote, NULL, strError)) {
+                budgetManager.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
                 vote.Relay();
                 success++;
                 statusObj.push_back(Pair("result", "success"));
@@ -870,8 +870,8 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
         }
 
         std::string strError = "";
-        if (governanceManager.UpdateFinalizedBudget(vote, NULL, strError)) {
-            governanceManager.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+        if (budgetManager.UpdateFinalizedBudget(vote, NULL, strError)) {
+            budgetManager.mapSeenFinalizedBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
             vote.Relay();
             return "success";
         } else {
@@ -882,7 +882,7 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
     if (strCommand == "show") {
         UniValue resultObj(UniValue::VOBJ);
 
-        std::vector<CFinalizedBudget*> winningFbs = governanceManager.GetFinalizedBudgets();
+        std::vector<CFinalizedBudget*> winningFbs = budgetManager.GetFinalizedBudgets();
         for (CFinalizedBudget* finalizedBudget : winningFbs) {
             UniValue bObj(UniValue::VOBJ);
             bObj.push_back(Pair("FeeTX", finalizedBudget->nFeeTXHash.ToString()));
@@ -912,7 +912,7 @@ UniValue mnfinalbudget(const JSONRPCRequest& request)
 
         UniValue obj(UniValue::VOBJ);
 
-        CFinalizedBudget* pfinalBudget = governanceManager.FindFinalizedBudget(hash);
+        CFinalizedBudget* pfinalBudget = budgetManager.FindFinalizedBudget(hash);
 
         if (pfinalBudget == NULL) return "Unknown budget hash";
 

@@ -22,6 +22,7 @@
 #include "consensus/upgrades.h"
 #include "consensus/zerocoin_verify.h"
 #include "fs.h"
+#include "governance/governance.h"
 #include "httpserver.h"
 #include "httprpc.h"
 #include "invalid.h"
@@ -1987,34 +1988,47 @@ bool AppInit2()
 
     uiInterface.InitMessage(_("Loading budget cache..."));
 
-    CBudgetDB budgetdb;
-    CBudgetDB::ReadResult readResult2 = budgetdb.Read(governanceManager);
+    CGovernanceDB governance_db;
+    CGovernanceDB::ReadResult readResult2 = governance_db.Read(governanceManager);
+    if (readResult2 == CGovernanceDB::FileError)
+        LogPrintf("Missing budget cache - governance.dat, will try to recreate\n");
+    else if (readResult2 != CGovernanceDB::Ok) {
+        LogPrintf("Error reading governance.dat: ");
+        if (readResult2 == CGovernanceDB::IncorrectFormat)
+            LogPrintf("magic is ok but data has invalid format, will try to recreate\n");
+        else
+            LogPrintf("file format is unknown or invalid, please fix it manually\n");
+    }
 
-    if (readResult2 == CBudgetDB::FileError)
+    CBudgetDB budget_db;
+    CBudgetDB::ReadResult readResult3 = budget_db.Read(budgetManager);
+    if (readResult3 == CBudgetDB::FileError)
         LogPrintf("Missing budget cache - budget.dat, will try to recreate\n");
-    else if (readResult2 != CBudgetDB::Ok) {
+    else if (readResult3 != CBudgetDB::Ok) {
         LogPrintf("Error reading budget.dat: ");
-        if (readResult2 == CBudgetDB::IncorrectFormat)
+        if (readResult3 == CBudgetDB::IncorrectFormat)
             LogPrintf("magic is ok but data has invalid format, will try to recreate\n");
         else
             LogPrintf("file format is unknown or invalid, please fix it manually\n");
     }
 
     //flag our cached items so we send them to our peers
-    governanceManager.ResetSync();
     governanceManager.ClearSeen();
+    budgetManager.ClearSeen();
+    governanceManager.ResetSync();
+    budgetManager.ResetSync();
 
 
     uiInterface.InitMessage(_("Loading masternode payment cache..."));
 
     CMasternodePaymentDB mnpayments;
-    CMasternodePaymentDB::ReadResult readResult3 = mnpayments.Read(masternodePayments);
+    CMasternodePaymentDB::ReadResult readResult4 = mnpayments.Read(masternodePayments);
 
-    if (readResult3 == CMasternodePaymentDB::FileError)
+    if (readResult4 == CMasternodePaymentDB::FileError)
         LogPrintf("Missing masternode payment cache - mnpayments.dat, will try to recreate\n");
-    else if (readResult3 != CMasternodePaymentDB::Ok) {
+    else if (readResult4 != CMasternodePaymentDB::Ok) {
         LogPrintf("Error reading mnpayments.dat: ");
-        if (readResult3 == CMasternodePaymentDB::IncorrectFormat)
+        if (readResult4 == CMasternodePaymentDB::IncorrectFormat)
             LogPrintf("magic is ok but data has invalid format, will try to recreate\n");
         else
             LogPrintf("file format is unknown or invalid, please fix it manually\n");

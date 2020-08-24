@@ -16,6 +16,139 @@
 #include "sync.h"
 #include "util.h"
 
+class CBudgetManager;
+class CFinalizedBudget;
+class CFinalizedBudgetBroadcast;
+class CFinalizedBudgetVote;
+class CTxBudgetPayment;
+class CWalletTx;
+
+static const CAmount PROPOSAL_FEE_TX = (50 * COIN);
+static const CAmount BUDGET_FEE_TX_OLD = (50 * COIN);
+static const CAmount BUDGET_FEE_TX = (5 * COIN);
+static const int64_t BUDGET_VOTE_UPDATE_MIN = 60 * 60;
+static std::map<uint256, int> mapPayment_History;
+
+extern std::vector<CFinalizedBudgetBroadcast> vecImmatureFinalizedBudgets;
+extern CBudgetManager budgetManager;
+
+enum class TrxValidationStatus {
+    InValid,         /** Transaction verification failed */
+    Valid,           /** Transaction successfully verified */
+    DoublePayment,   /** Transaction successfully verified, but includes a double-budget-payment */
+    VoteThreshold    /** If not enough masternodes have voted on a finalized budget */
+};
+
+/**
+ * Save Budget Manager (budget.dat)
+ */
+class CBudgetDB
+{
+private:
+    fs::path pathDB;
+    std::string strMagicMessage;
+
+public:
+    enum ReadResult {
+        Ok,
+        FileError,
+        HashReadError,
+        IncorrectHash,
+        IncorrectMagicMessage,
+        IncorrectMagicNumber,
+        IncorrectFormat
+    };
+
+    CBudgetDB();
+    bool Write(const CBudgetManager& objToSave);
+    ReadResult Read(CBudgetManager& objToLoad, bool fDryRun = false);
+};
+
+/**
+* Finalized Budget Manager
+* -------------------------------------------------------
+*
+* This object is responsible for finalization of the budget system. It's built to be completely separate from
+* the governance system, to eliminate any network differences.
+*/
+
+class CBudgetManager
+{
+private:
+    // hold txes until they mature enough to use
+    std::map<uint256, uint256> mapCollateralTxids;
+
+public:
+    // critical section to protect the inner data structures
+    mutable RecursiveMutex cs;
+
+    std::map<uint256, CFinalizedBudget> mapFinalizedBudgets;
+
+    std::map<uint256, CFinalizedBudget> mapSeenFinalizedBudgets;
+    std::map<uint256, CFinalizedBudgetVote> mapSeenFinalizedBudgetVotes;
+    std::map<uint256, CFinalizedBudgetVote> mapOrphanFinalizedBudgetVotes;
+
+    CBudgetManager()
+    {
+        mapFinalizedBudgets.clear();
+    }
+
+    void ClearSeen()
+    {
+        mapSeenFinalizedBudgets.clear();
+        mapSeenFinalizedBudgetVotes.clear();
+    }
+
+    int sizeFinalized() { return (int)mapFinalizedBudgets.size(); }
+
+    void ResetSync();
+    void MarkSynced();
+    void Sync(CNode* node, uint256 nProp, bool fPartial=false);
+
+    void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
+    void NewBlock();
+
+    CFinalizedBudget *FindFinalizedBudget(const uint256& nHash);
+
+    std::vector<CFinalizedBudget*> GetFinalizedBudgets();
+
+    void SubmitFinalBudget();
+    bool UpdateFinalizedBudget(CFinalizedBudgetVote& vote, CNode* pfrom, std::string& strError);
+
+    bool IsBudgetPaymentBlock(int nBlockHeight);
+    TrxValidationStatus IsTransactionValid(const CTransaction& txNew, int nBlockHeight);
+    std::string GetRequiredPaymentsString(int nBlockHeight);
+    void FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake);
+
+    void CheckOrphanVotes();
+    void Clear()
+    {
+        LOCK(cs);
+
+        LogPrintf("Budget Manager object cleared\n");
+        mapFinalizedBudgets.clear();
+        mapSeenFinalizedBudgets.clear();
+        mapSeenFinalizedBudgetVotes.clear();
+        mapOrphanFinalizedBudgetVotes.clear();
+    }
+    void CheckAndRemove();
+    std::string ToString() const;
+
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(mapSeenFinalizedBudgets);
+        READWRITE(mapSeenFinalizedBudgetVotes);
+        READWRITE(mapOrphanFinalizedBudgetVotes);
+        READWRITE(mapFinalizedBudgets);
+    }
+
+private:
+    bool AddFinalizedBudget(CFinalizedBudget& finalizedBudget);
+};
+
 class CTxBudgetPayment
 {
 public:
@@ -225,5 +358,7 @@ public:
         READWRITE(nFeeTXHash);
     }
 };
+
+void DumpBudgets();
 
 #endif

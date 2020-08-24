@@ -16,46 +16,26 @@
 #include "sync.h"
 #include "util.h"
 
-
-extern RecursiveMutex cs_budget;
-
-class CGovernanceManager;
-class CBudgetProposalBroadcast;
-class CBudgetVote;
-class CBudgetProposal;
-class CFinalizedBudget;
-class CFinalizedBudgetBroadcast;
-class CFinalizedBudgetVote;
-
 #define VOTE_ABSTAIN 0
 #define VOTE_YES 1
 #define VOTE_NO 2
 
-enum class TrxValidationStatus {
-    InValid,         /** Transaction verification failed */
-    Valid,           /** Transaction successfully verified */
-    DoublePayment,   /** Transaction successfully verified, but includes a double-budget-payment */
-    VoteThreshold    /** If not enough masternodes have voted on a finalized budget */
-};
+class CGovernanceManager;
+class CBudgetProposal;
+class CBudgetProposalBroadcast;
+class CBudgetVote;
 
-static const CAmount PROPOSAL_FEE_TX = (50 * COIN);
-static const CAmount BUDGET_FEE_TX_OLD = (50 * COIN);
-static const CAmount BUDGET_FEE_TX = (5 * COIN);
-static const int64_t BUDGET_VOTE_UPDATE_MIN = 60 * 60;
-static std::map<uint256, int> mapPayment_History;
-
+extern std::map<uint256, int64_t> askedForSourceProposalOrBudget;
 extern std::vector<CBudgetProposalBroadcast> vecImmatureBudgetProposals;
-
 extern CGovernanceManager governanceManager;
-void DumpBudgets();
 
 //Check the collateral transaction for the budget proposal/finalized budget
 bool IsBudgetCollateralValid(uint256 nTxCollateralHash, uint256 nExpectedHash, std::string& strError, int64_t& nTime, int& nConf, bool fBudgetFinalization=false);
 
-/** 
- * Save Budget Manager (budget.dat)
+/**
+ * Save Budget Manager (budget.dat) - remove duplication with gov manager
  */
-class CBudgetDB
+class CGovernanceDB
 {
 private:
     fs::path pathDB;
@@ -72,7 +52,7 @@ public:
         IncorrectFormat
     };
 
-    CBudgetDB();
+    CGovernanceDB();
     bool Write(const CGovernanceManager& objToSave);
     ReadResult Read(CGovernanceManager& objToLoad, bool fDryRun = false);
 };
@@ -83,8 +63,7 @@ public:
 class CGovernanceManager
 {
 private:
-    //hold txes until they mature enough to use
-    // XX42    std::map<uint256, CTransaction> mapCollateral;
+    // hold txes until they mature enough to use
     std::map<uint256, uint256> mapCollateralTxids;
 
 public:
@@ -93,30 +72,23 @@ public:
 
     // keep track of the scanning errors I've seen
     std::map<uint256, CBudgetProposal> mapProposals;
-    std::map<uint256, CFinalizedBudget> mapFinalizedBudgets;
 
-    std::map<uint256, CBudgetProposalBroadcast> mapSeenMasternodeBudgetProposals;
+    // !TODO: make private for better encapsulation
+    std::map<uint256, CBudgetProposal> mapSeenMasternodeBudgetProposals;
     std::map<uint256, CBudgetVote> mapSeenMasternodeBudgetVotes;
     std::map<uint256, CBudgetVote> mapOrphanMasternodeBudgetVotes;
-    std::map<uint256, CFinalizedBudgetBroadcast> mapSeenFinalizedBudgets;
-    std::map<uint256, CFinalizedBudgetVote> mapSeenFinalizedBudgetVotes;
-    std::map<uint256, CFinalizedBudgetVote> mapOrphanFinalizedBudgetVotes;
 
     CGovernanceManager()
     {
         mapProposals.clear();
-        mapFinalizedBudgets.clear();
     }
 
     void ClearSeen()
     {
         mapSeenMasternodeBudgetProposals.clear();
         mapSeenMasternodeBudgetVotes.clear();
-        mapSeenFinalizedBudgets.clear();
-        mapSeenFinalizedBudgetVotes.clear();
     }
 
-    int sizeFinalized() { return (int)mapFinalizedBudgets.size(); }
     int sizeProposals() { return (int)mapProposals.size(); }
 
     void ResetSync();
@@ -126,60 +98,40 @@ public:
     void Calculate();
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     void NewBlock();
+
     CBudgetProposal* FindProposal(const std::string& strProposalName);
     CBudgetProposal* FindProposal(uint256 nHash);
-    CFinalizedBudget* FindFinalizedBudget(uint256 nHash);
-    std::pair<std::string, std::string> GetVotes(std::string strProposalName);
 
     CAmount GetTotalBudget(int nHeight);
     std::vector<CBudgetProposal*> GetBudget();
     std::vector<CBudgetProposal*> GetAllProposals();
-    std::vector<CFinalizedBudget*> GetFinalizedBudgets();
-    bool IsBudgetPaymentBlock(int nBlockHeight);
-    bool AddProposal(CBudgetProposal& budgetProposal);
-    bool AddFinalizedBudget(CFinalizedBudget& finalizedBudget);
-    void SubmitFinalBudget();
 
+    bool AddProposal(CBudgetProposal& budgetProposal);
     bool UpdateProposal(CBudgetVote& vote, CNode* pfrom, std::string& strError);
-    bool UpdateFinalizedBudget(CFinalizedBudgetVote& vote, CNode* pfrom, std::string& strError);
-    bool PropExists(uint256 nHash);
-    TrxValidationStatus IsTransactionValid(const CTransaction& txNew, int nBlockHeight);
-    std::string GetRequiredPaymentsString(int nBlockHeight);
-    void FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake);
 
     void CheckOrphanVotes();
     void Clear()
     {
         LOCK(cs);
 
-        LogPrintf("Budget object cleared\n");
+        LogPrintf("Governance Manager object cleared\n");
         mapProposals.clear();
-        mapFinalizedBudgets.clear();
         mapSeenMasternodeBudgetProposals.clear();
         mapSeenMasternodeBudgetVotes.clear();
-        mapSeenFinalizedBudgets.clear();
-        mapSeenFinalizedBudgetVotes.clear();
         mapOrphanMasternodeBudgetVotes.clear();
-        mapOrphanFinalizedBudgetVotes.clear();
     }
     void CheckAndRemove();
     std::string ToString() const;
 
 
     ADD_SERIALIZE_METHODS;
-
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
         READWRITE(mapSeenMasternodeBudgetProposals);
         READWRITE(mapSeenMasternodeBudgetVotes);
-        READWRITE(mapSeenFinalizedBudgets);
-        READWRITE(mapSeenFinalizedBudgetVotes);
         READWRITE(mapOrphanMasternodeBudgetVotes);
-        READWRITE(mapOrphanFinalizedBudgetVotes);
-
         READWRITE(mapProposals);
-        READWRITE(mapFinalizedBudgets);
     }
 };
 
