@@ -74,6 +74,9 @@ public:
     bool IsBudgetPropEmpty();
 
     void Reset();
+    // Process sync with a single node.
+    // Returns false if the sync is complete (no need to process more nodes).
+    bool ProcessNode(CNode* pnode, bool isRegTestNet);
     void Process();
     bool IsSynced();
     bool NotCompleted();
