@@ -485,12 +485,10 @@ void CGovernanceManager::NewBlock()
             ResetSync();
         }
 
-        std::vector<CNode*> vNodesCopy = g_connman->CopyNodeVector();
-        for (CNode* pnode : vNodesCopy)
-            if (pnode->nVersion >= ActiveProtocol())
-                Sync(pnode, UINT256_ZERO, true);
-
-        g_connman->ReleaseNodeVector(vNodesCopy);
+        CGovernanceManager* manager = this;
+        g_connman->ForEachNode([manager](CNode* pnode){
+            manager->Sync(pnode, UINT256_ZERO, true);
+        });
         MarkSynced();
     }
 
