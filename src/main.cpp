@@ -3026,7 +3026,7 @@ static bool ActivateBestChainStep(CValidationState& state, CBlockIndex* pindexMo
  * or an activated best chain. pblock is either NULL or a pointer to a block
  * that is already loaded (to avoid loading it again from disk).
  */
-bool ActivateBestChain(CValidationState& state, const CBlock* pblock, bool fAlreadyChecked, CConnman* connman)
+bool ActivateBestChain(CValidationState& state, const CBlock* pblock, bool fAlreadyChecked, CConnman* connman, CBudgetManager* pbudget)
 {
     // Note that while we're often called here from ProcessNewBlock, this is
     // far from a guarantee. Things in the P2P/RPC will often end up calling
@@ -3083,6 +3083,8 @@ bool ActivateBestChain(CValidationState& state, const CBlock* pblock, bool fAlre
         // Notifications/callbacks that can run without cs_main
         if(connman)
             connman->SetBestHeight(pindexNewTip->nHeight);
+        if(pbudget)
+            pbudget->SetBestHeight(pindexNewTip->nHeight);
 
         // Always notify the UI if a new block tip was connected
         if (pindexFork != pindexNewTip) {
@@ -4203,7 +4205,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, const CBlock* pblock
         }
     }
 
-    if (!ActivateBestChain(state, pblock, checked, connman))
+    if (!ActivateBestChain(state, pblock, checked, connman, &budget))
         return error("%s : ActivateBestChain failed", __func__);
 
     if (!fLiteMode) {
