@@ -573,102 +573,49 @@ CBudgetProposal* CBudgetManager::FindProposal(const uint256& nHash)
     return NULL;
 }
 
-bool CBudgetManager::IsBudgetPaymentBlock(int nBlockHeight)
+bool CBudgetManager::IsBudgetPaymentBlock(int nBlockHeight) const
 {
-    LOCK(cs_budgets);
-
-    int nHighestCount = -1;
+    const CFinalizedBudget* pbudget = GetBudgetWithHighestVoteCount(nBlockHeight - 1);
+    const int nHighestCount = (pbudget ? pbudget->GetVoteCount() : -1);
+    int nBudgetsSize = WITH_LOCK(cs_budgets, return mapFinalizedBudgets.size());
     int nFivePercent = mnodeman.CountEnabled(ActiveProtocol()) / 20;
-
-    std::map<uint256, CFinalizedBudget>::iterator it = mapFinalizedBudgets.begin();
-    while (it != mapFinalizedBudgets.end()) {
-        CFinalizedBudget* pfinalizedBudget = &((*it).second);
-        if (pfinalizedBudget->GetVoteCount() > nHighestCount &&
-            nBlockHeight >= pfinalizedBudget->GetBlockStart() &&
-            nBlockHeight <= pfinalizedBudget->GetBlockEnd()) {
-            nHighestCount = pfinalizedBudget->GetVoteCount();
-        }
-
-        ++it;
-    }
 
     LogPrint(BCLog::MNBUDGET,"%s: nHighestCount: %lli, 5%% of Masternodes: %lli. Number of finalized budgets: %lli\n",
-            __func__, nHighestCount, nFivePercent, mapFinalizedBudgets.size());
+            __func__, nHighestCount, nFivePercent, nBudgetsSize);
 
     // If budget doesn't have 5% of the network votes, then we should pay a masternode instead
-    if (nHighestCount > nFivePercent) return true;
-
-    return false;
+    return (nHighestCount > nFivePercent);
 }
 
-TrxValidationStatus CBudgetManager::IsTransactionValid(const CTransaction& txNew, int nBlockHeight)
+TrxValidationStatus CBudgetManager::IsTransactionValid(const CTransaction& txNew, int nBlockHeight) const
 {
-    LOCK(cs_budgets);
-
     TrxValidationStatus transactionStatus = TrxValidationStatus::InValid;
-    int nHighestCount = 0;
-    int nFivePercent = mnodeman.CountEnabled(ActiveProtocol()) / 20;
-    std::vector<CFinalizedBudget*> ret;
-
-    LogPrint(BCLog::MNBUDGET,"%s: checking %lli finalized budgets\n", __func__, mapFinalizedBudgets.size());
-
-    // ------- Grab The Highest Count
-
-    std::map<uint256, CFinalizedBudget>::iterator it = mapFinalizedBudgets.begin();
-    while (it != mapFinalizedBudgets.end()) {
-        CFinalizedBudget* pfinalizedBudget = &((*it).second);
-
-        if (pfinalizedBudget->GetVoteCount() > nHighestCount &&
-            nBlockHeight >= pfinalizedBudget->GetBlockStart() &&
-            nBlockHeight <= pfinalizedBudget->GetBlockEnd()) {
-            nHighestCount = pfinalizedBudget->GetVoteCount();
-        }
-
-        ++it;
-    }
-
-    LogPrint(BCLog::MNBUDGET,"%s: nHighestCount: %lli, 5%% of Masternodes: %lli mapFinalizedBudgets.size(): %ld\n",
-            __func__, nHighestCount, nFivePercent, mapFinalizedBudgets.size());
-    /*
-        If budget doesn't have 5% of the network votes, then we should pay a masternode instead
-    */
-    if (nHighestCount < nFivePercent) return TrxValidationStatus::InValid;
+    // check first if there's any budget above threshold (as it's faster)
+    if (!IsBudgetPaymentBlock(nBlockHeight))
+        return TrxValidationStatus::InValid;
 
     // check the highest finalized budgets (+/- 10% to assist in consensus)
-
-    std::string strProposals = "";
-    int nCountThreshold = nHighestCount - mnodeman.CountEnabled(ActiveProtocol()) / 10;
     bool fThreshold = false;
-    it = mapFinalizedBudgets.begin();
-    while (it != mapFinalizedBudgets.end()) {
-        CFinalizedBudget* pfinalizedBudget = &((*it).second);
-        strProposals = pfinalizedBudget->GetProposals();
+    {
+        LOCK(cs_budgets);
+        int nCountThreshold = mapFinalizedBudgets.size() - mnodeman.CountEnabled(ActiveProtocol()) / 10;
 
-        LogPrint(BCLog::MNBUDGET,"%s: checking budget (%s) with blockstart %lli, blockend %lli, nBlockHeight %lli, votes %lli, nCountThreshold %lli\n",
-                __func__, strProposals.c_str(), pfinalizedBudget->GetBlockStart(), pfinalizedBudget->GetBlockEnd(),
-                nBlockHeight, pfinalizedBudget->GetVoteCount(), nCountThreshold);
-
-        if (pfinalizedBudget->GetVoteCount() > nCountThreshold) {
-            fThreshold = true;
-            LogPrint(BCLog::MNBUDGET,"%s: GetVoteCount() > nCountThreshold passed\n", __func__);
-            if (nBlockHeight >= pfinalizedBudget->GetBlockStart() && nBlockHeight <= pfinalizedBudget->GetBlockEnd()) {
-                LogPrint(BCLog::MNBUDGET,"%s: GetBlockStart() passed\n", __func__);
-                transactionStatus = pfinalizedBudget->IsTransactionValid(txNew, nBlockHeight);
-                if (transactionStatus == TrxValidationStatus::Valid) {
-                    LogPrint(BCLog::MNBUDGET,"%s: pfinalizedBudget->IsTransactionValid() passed\n", __func__);
+        for (const auto& it: mapFinalizedBudgets) {
+            const CFinalizedBudget* pfinalizedBudget = &(it.second);
+            LogPrint(BCLog::MNBUDGET,"%s: checking budget (%s) with blockstart %lli, blockend %lli, nBlockHeight %lli, votes %lli, nCountThreshold %lli\n",
+                    __func__, pfinalizedBudget->GetProposals(), pfinalizedBudget->GetBlockStart(), pfinalizedBudget->GetBlockEnd(),
+                    nBlockHeight, pfinalizedBudget->GetVoteCount(), nCountThreshold);
+            if (pfinalizedBudget->GetVoteCount() > nCountThreshold) {
+                fThreshold = true;
+                if (nBlockHeight >= pfinalizedBudget->GetBlockStart() &&
+                        nBlockHeight <= pfinalizedBudget->GetBlockEnd() &&
+                        pfinalizedBudget->IsTransactionValid(txNew, nBlockHeight) == TrxValidationStatus::Valid) {
                     return TrxValidationStatus::Valid;
-                }
-                else {
-                    LogPrint(BCLog::MNBUDGET,"%s: pfinalizedBudget->IsTransactionValid() error\n", __func__);
+                } else {
+                    LogPrint(BCLog::MNBUDGET, "%s: ignoring budget. Out of range or tx not valid.\n", __func__);
                 }
             }
-            else {
-                LogPrint(BCLog::MNBUDGET,"%s: GetBlockStart() failed, budget is outside current payment cycle and will be ignored.\n", __func__);
-            }
-
         }
-
-        ++it;
     }
 
     // If not enough masternodes autovoted for any of the finalized budgets pay a masternode instead
@@ -1915,13 +1862,13 @@ CAmount CFinalizedBudget::GetTotalPayout() const
     return ret;
 }
 
-std::string CFinalizedBudget::GetProposals()
+std::string CFinalizedBudget::GetProposals() const
 {
     LOCK(budget.cs_proposals);
 
     std::string ret = "";
-    for (CTxBudgetPayment& budgetPayment : vecBudgetPayments) {
-        CBudgetProposal* pbudgetProposal = budget.FindProposal(budgetPayment.nProposalHash);
+    for (const CTxBudgetPayment& budgetPayment : vecBudgetPayments) {
+        const CBudgetProposal* pbudgetProposal = budget.FindProposal(budgetPayment.nProposalHash);
 
         std::string token = budgetPayment.nProposalHash.ToString();
 
