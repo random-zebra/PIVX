@@ -474,22 +474,29 @@ void CBudgetManager::CheckAndRemove()
     }
 
 }
+const CFinalizedBudget* CBudgetManager::GetBudgetWithHighestVoteCount(int chainHeight) const
+{
+    LOCK(cs_budgets);
+    int highestVoteCount = 0;
+    const CFinalizedBudget* pHighestBudget = nullptr;
+    for (const auto& it: mapFinalizedBudgets) {
+        const CFinalizedBudget* pfinalizedBudget = &(it.second);
+        if (pfinalizedBudget->GetVoteCount() > highestVoteCount &&
+            chainHeight + 1 >= pfinalizedBudget->GetBlockStart() &&
+            chainHeight + 1 <= pfinalizedBudget->GetBlockEnd()) {
+            pHighestBudget = pfinalizedBudget;
+            highestVoteCount = pfinalizedBudget->GetVoteCount();
+        }
+    }
+    return pHighestBudget;
+}
 
 bool CBudgetManager::GetPayeeAndAmount(int chainHeight, CScript& payeeRet, CAmount& nAmountRet) const
 {
-    LOCK(cs_budgets);
-
-    int nHighestCount = 0;
-    for (const auto& it: mapFinalizedBudgets) {
-        const CFinalizedBudget* pfinalizedBudget = &(it.second);
-        if (pfinalizedBudget->GetVoteCount() > nHighestCount &&
-            chainHeight + 1 >= pfinalizedBudget->GetBlockStart() &&
-            chainHeight + 1 <= pfinalizedBudget->GetBlockEnd() &&
-            pfinalizedBudget->GetPayeeAndAmount(chainHeight + 1, payeeRet, nAmountRet)) {
-            nHighestCount = pfinalizedBudget->GetVoteCount();
-        }
-    }
-    return nHighestCount > 0;
+    const CFinalizedBudget* pfinalizedBudget = GetBudgetWithHighestVoteCount(chainHeight);
+    return pfinalizedBudget &&
+           pfinalizedBudget->GetVoteCount() > 0 &&
+           pfinalizedBudget->GetPayeeAndAmount(chainHeight + 1, payeeRet, nAmountRet);
 }
 
 void CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, bool fProofOfStake) const
