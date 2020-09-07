@@ -111,9 +111,9 @@ void CBudgetManager::CheckOrphanVotes()
     std::string strError = "";
     {
         LOCK(cs_votes);
-        for (auto it = mapOrphanMasternodeBudgetVotes.begin(); it != mapOrphanMasternodeBudgetVotes.end();) {
+        for (auto it = mapOrphanProposalVotes.begin(); it != mapOrphanProposalVotes.end();) {
             if (UpdateProposal(it->second, nullptr, strError))
-                it = mapOrphanMasternodeBudgetVotes.erase(it);
+                it = mapOrphanProposalVotes.erase(it);
             else
                 ++it;
         }
@@ -787,13 +787,13 @@ CAmount CBudgetManager::GetTotalBudget(int nHeight)
 void CBudgetManager::AddSeenProposal(const CBudgetProposalBroadcast& prop)
 {
     LOCK(cs_proposals);
-    mapSeenMasternodeBudgetProposals.emplace(prop.GetHash(), prop);
+    mapSeenProposals.emplace(prop.GetHash(), prop);
 }
 
 void CBudgetManager::AddSeenProposalVote(const CBudgetVote& vote)
 {
     LOCK(cs_votes);
-    mapSeenMasternodeBudgetVotes.insert(std::make_pair(vote.GetHash(), vote));
+    mapSeenProposalVotes.insert(std::make_pair(vote.GetHash(), vote));
 }
 
 void CBudgetManager::AddSeenFinalizedBudget(const CFinalizedBudgetBroadcast& bud)
@@ -814,7 +814,7 @@ CDataStream CBudgetManager::GetProposalVoteSerialized(const uint256& voteHash) c
     LOCK(cs_votes);
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
     ss.reserve(1000);
-    ss << mapSeenMasternodeBudgetVotes.at(voteHash);
+    ss << mapSeenProposalVotes.at(voteHash);
     return ss;
 }
 
@@ -823,7 +823,7 @@ CDataStream CBudgetManager::GetProposalSerialized(const uint256& propHash) const
     LOCK(cs_proposals);
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
     ss.reserve(1000);
-    ss << mapSeenMasternodeBudgetProposals.at(propHash);
+    ss << mapSeenProposals.at(propHash);
     return ss;
 }
 
@@ -905,9 +905,9 @@ void CBudgetManager::NewBlock(int height)
         for (auto& it: mapProposals) {
             it.second.CleanAndRemove();
         }
-        LogPrint(BCLog::MNBUDGET,"%s:  vecImmatureBudgetProposals cleanup - size: %d\n", __func__, vecImmatureBudgetProposals.size());
-        std::vector<CBudgetProposalBroadcast>::iterator it = vecImmatureBudgetProposals.begin();
-        while (it != vecImmatureBudgetProposals.end()) {
+        LogPrint(BCLog::MNBUDGET,"%s:  vecImmatureProposals cleanup - size: %d\n", __func__, vecImmatureProposals.size());
+        std::vector<CBudgetProposalBroadcast>::iterator it = vecImmatureProposals.begin();
+        while (it != vecImmatureProposals.end()) {
             std::string strError = "";
             int nConf = 0;
             const uint256& nHash = it->GetHash();
@@ -917,7 +917,7 @@ void CBudgetManager::NewBlock(int height)
             }
             if (!it->UpdateValid(nCurrentHeight)) {
                 LogPrint(BCLog::MNBUDGET,"mprop (immature) - invalid budget proposal - %s\n", it->IsInvalidReason());
-                it = vecImmatureBudgetProposals.erase(it);
+                it = vecImmatureProposals.erase(it);
                 continue;
             }
             LogPrint(BCLog::MNBUDGET,"mprop (immature) - new budget - %s\n", nHash.ToString());
@@ -925,7 +925,7 @@ void CBudgetManager::NewBlock(int height)
             if (AddProposal(budgetProposal)) {
                 it->Relay();
             }
-            it = vecImmatureBudgetProposals.erase(it);
+            it = vecImmatureProposals.erase(it);
         }
     }
     {
@@ -1005,7 +1005,7 @@ void CBudgetManager::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             LogPrint(BCLog::MNBUDGET,"Proposal FeeTX is not valid - %s - %s\n", nFeeTXHash.ToString(), strError);
             if (nConf >= 1) {
                 LOCK(cs_proposals);
-                vecImmatureBudgetProposals.push_back(budgetProposalBroadcast);
+                vecImmatureProposals.push_back(budgetProposalBroadcast);
             }
             return;
         }
@@ -1156,7 +1156,7 @@ void CBudgetManager::SetSynced(bool synced)
 {
     {
         LOCK(cs_proposals);
-        for (const auto& it: mapSeenMasternodeBudgetProposals) {
+        for (const auto& it: mapSeenProposals) {
             CBudgetProposal* pbudgetProposal = FindProposal(it.first);
             if (pbudgetProposal && pbudgetProposal->IsValid()) {
                 //mark votes
@@ -1195,7 +1195,7 @@ void CBudgetManager::Sync(CNode* pfrom, const uint256& nProp, bool fPartial)
 
     {
         LOCK(cs_proposals);
-        for (auto& it: mapSeenMasternodeBudgetProposals) {
+        for (auto& it: mapSeenProposals) {
             CBudgetProposal* pbudgetProposal = FindProposal(it.first);
             if (pbudgetProposal && pbudgetProposal->IsValid() && (nProp.IsNull() || it.first == nProp)) {
                 pfrom->PushInventory(CInv(MSG_BUDGET_PROPOSAL, it.second.GetHash()));
@@ -1236,7 +1236,7 @@ bool CBudgetManager::UpdateProposal(const CBudgetVote& vote, CNode* pfrom, std::
             if (!masternodeSync.IsSynced()) return false;
 
             LogPrint(BCLog::MNBUDGET,"%s: Unknown proposal %d, asking for source proposal\n", __func__, nProposalHash.ToString());
-            WITH_LOCK(cs_votes, mapOrphanMasternodeBudgetVotes[nProposalHash] = vote; );
+            WITH_LOCK(cs_votes, mapOrphanProposalVotes[nProposalHash] = vote; );
 
             if (!askedForSourceProposalOrBudget.count(nProposalHash)) {
                 g_connman->PushMessage(pfrom, CNetMsgMaker(pfrom->GetSendVersion()).Make(NetMsgType::BUDGETVOTESYNC, nProposalHash));
@@ -2211,7 +2211,7 @@ std::string CBudgetManager::ToString() const
 {
     std::ostringstream info;
 
-    info << "Proposals: " << (int)mapProposals.size() << ", Budgets: " << (int)mapFinalizedBudgets.size() << ", Seen Budgets: " << (int)mapSeenMasternodeBudgetProposals.size() << ", Seen Budget Votes: " << (int)mapSeenMasternodeBudgetVotes.size() << ", Seen Final Budgets: " << (int)mapSeenFinalizedBudgets.size() << ", Seen Final Budget Votes: " << (int)mapSeenFinalizedBudgetVotes.size();
+    info << "Proposals: " << (int)mapProposals.size() << ", Budgets: " << (int)mapFinalizedBudgets.size() << ", Seen Budgets: " << (int)mapSeenProposals.size() << ", Seen Budget Votes: " << (int)mapSeenProposalVotes.size() << ", Seen Final Budgets: " << (int)mapSeenFinalizedBudgets.size() << ", Seen Final Budget Votes: " << (int)mapSeenFinalizedBudgetVotes.size();
 
     return info.str();
 }

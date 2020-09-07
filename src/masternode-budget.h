@@ -208,19 +208,19 @@ private:
     //hold txes until they mature enough to use
     std::map<uint256, uint256> mapCollateralTxids;
 
-    std::map<uint256, CBudgetProposal> mapProposals;                                // guarded by cs_proposals
-    std::map<uint256, CFinalizedBudget> mapFinalizedBudgets;                        // guarded by cs_budgets
+    std::map<uint256, CBudgetProposal> mapProposals;                        // guarded by cs_proposals
+    std::map<uint256, CFinalizedBudget> mapFinalizedBudgets;                // guarded by cs_budgets
 
-    std::map<uint256, CBudgetProposalBroadcast> mapSeenMasternodeBudgetProposals;   // guarded by cs_proposals
-    std::map<uint256, CFinalizedBudgetBroadcast> mapSeenFinalizedBudgets;           // guarded by cs_budgets
-    std::map<uint256, CBudgetVote> mapSeenMasternodeBudgetVotes;                    // guarded by cs_votes
-    std::map<uint256, CBudgetVote> mapOrphanMasternodeBudgetVotes;                  // guarded by cs_votes
-    std::map<uint256, CFinalizedBudgetVote> mapSeenFinalizedBudgetVotes;            // guarded by cs_finalizedvotes
-    std::map<uint256, CFinalizedBudgetVote> mapOrphanFinalizedBudgetVotes;          // guarded by cs_finalizedvotes
+    std::map<uint256, CBudgetProposalBroadcast> mapSeenProposals;           // guarded by cs_proposals
+    std::map<uint256, CFinalizedBudgetBroadcast> mapSeenFinalizedBudgets;   // guarded by cs_budgets
+    std::map<uint256, CBudgetVote> mapSeenProposalVotes;                    // guarded by cs_votes
+    std::map<uint256, CBudgetVote> mapOrphanProposalVotes;                  // guarded by cs_votes
+    std::map<uint256, CFinalizedBudgetVote> mapSeenFinalizedBudgetVotes;    // guarded by cs_finalizedvotes
+    std::map<uint256, CFinalizedBudgetVote> mapOrphanFinalizedBudgetVotes;  // guarded by cs_finalizedvotes
 
     // Memory only
-    std::vector<CBudgetProposalBroadcast> vecImmatureBudgetProposals;               // guarded by cs_proposals
-    std::vector<CFinalizedBudgetBroadcast> vecImmatureFinalizedBudgets;             // guarded by cs_budgets
+    std::vector<CBudgetProposalBroadcast> vecImmatureProposals;             // guarded by cs_proposals
+    std::vector<CFinalizedBudgetBroadcast> vecImmatureFinalizedBudgets;     // guarded by cs_budgets
 
     // Memory Only. Updated in NewBlock (blocks arrive in order)
     std::atomic<int> nBestHeight;
@@ -249,14 +249,14 @@ public:
 
     void ClearSeen()
     {
-        WITH_LOCK(cs_proposals, mapSeenMasternodeBudgetProposals.clear(); );
-        WITH_LOCK(cs_votes, mapSeenMasternodeBudgetVotes.clear(); );
+        WITH_LOCK(cs_proposals, mapSeenProposals.clear(); );
+        WITH_LOCK(cs_votes, mapSeenProposalVotes.clear(); );
         WITH_LOCK(cs_budgets, mapSeenFinalizedBudgets.clear(); );
         WITH_LOCK(cs_finalizedvotes, mapSeenFinalizedBudgetVotes.clear(); );
     }
 
-    bool HaveSeenProposal(const uint256& propHash) const { LOCK(cs_proposals); return mapSeenMasternodeBudgetProposals.count(propHash); }
-    bool HaveSeenProposalVote(const uint256& voteHash) const { LOCK(cs_votes); return mapSeenMasternodeBudgetVotes.count(voteHash); }
+    bool HaveSeenProposal(const uint256& propHash) const { LOCK(cs_proposals); return mapSeenProposals.count(propHash); }
+    bool HaveSeenProposalVote(const uint256& voteHash) const { LOCK(cs_votes); return mapSeenProposalVotes.count(voteHash); }
     bool HaveSeenFinalizedBudget(const uint256& budgetHash) const { LOCK(cs_budgets); return mapSeenFinalizedBudgets.count(budgetHash); }
     bool HaveSeenFinalizedBudgetVote(const uint256& voteHash) const { LOCK(cs_finalizedvotes); return mapSeenFinalizedBudgetVotes.count(voteHash); }
 
@@ -307,7 +307,7 @@ public:
         {
             LOCK(cs_proposals);
             mapProposals.clear();
-            mapSeenMasternodeBudgetProposals.clear();
+            mapSeenProposals.clear();
         }
         {
             LOCK(cs_budgets);
@@ -316,8 +316,8 @@ public:
         }
         {
             LOCK(cs_votes);
-            mapSeenMasternodeBudgetVotes.clear();
-            mapOrphanMasternodeBudgetVotes.clear();
+            mapSeenProposalVotes.clear();
+            mapOrphanProposalVotes.clear();
         }
         {
             LOCK(cs_finalizedvotes);
@@ -333,11 +333,11 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        WITH_LOCK(cs_proposals, READWRITE(mapSeenMasternodeBudgetProposals); );
-        WITH_LOCK(cs_votes, READWRITE(mapSeenMasternodeBudgetVotes); );
+        WITH_LOCK(cs_proposals, READWRITE(mapSeenProposals); );
+        WITH_LOCK(cs_votes, READWRITE(mapSeenProposalVotes); );
         WITH_LOCK(cs_budgets, READWRITE(mapSeenFinalizedBudgets); );
         WITH_LOCK(cs_finalizedvotes, READWRITE(mapSeenFinalizedBudgetVotes); );
-        WITH_LOCK(cs_votes, READWRITE(mapOrphanMasternodeBudgetVotes); );
+        WITH_LOCK(cs_votes, READWRITE(mapOrphanProposalVotes); );
         WITH_LOCK(cs_votes, READWRITE(mapOrphanFinalizedBudgetVotes); );
         WITH_LOCK(cs_proposals, READWRITE(mapProposals); );
         WITH_LOCK(cs_budgets, READWRITE(mapFinalizedBudgets); );
