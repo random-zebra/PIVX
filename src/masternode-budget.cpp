@@ -424,8 +424,7 @@ bool CBudgetManager::AddProposal(CBudgetProposal& budgetProposal)
     }
 
     if (!budgetProposal.IsWellFormed(GetTotalBudget(budgetProposal.GetBlockStart()))) {
-        LogPrint(BCLog::MNBUDGET,"%s: invalid budget proposal (%s) - %s\n",
-                __func__, strName, budgetProposal.IsInvalidReason());
+        LogPrint(BCLog::MNBUDGET,"%s: invalid budget proposal: %s\n", __func__, budgetProposal.IsInvalidReason());
         return false;
     }
 
@@ -1956,8 +1955,6 @@ void CFinalizedBudget::SyncVotes(CNode* pfrom, bool fPartial, int& nInvCount) co
 bool CFinalizedBudget::UpdateValid(int nCurrentHeight, bool fCheckCollateral)
 {
     fValid = false;
-    // All(!) finalized budgets have the name "main", so get some additional information about them
-    std::string strProposals = GetProposals();
 
     const int nBlocksPerCycle = Params().GetConsensus().nBudgetCycleBlocks;
     // Must be the correct block for payment to happen (once a month)
@@ -1980,17 +1977,17 @@ bool CFinalizedBudget::UpdateValid(int nCurrentHeight, bool fCheckCollateral)
         return false;
     }
     if (nBlockStart == 0) {
-        strInvalid = "Budget " + strBudgetName + " (" + strProposals + ") Invalid BlockStart == 0";
+        strInvalid = "Invalid BlockStart == 0";
         return false;
     }
     if (nFeeTXHash.IsNull()) {
-        strInvalid = "Budget " + strBudgetName  + " (" + strProposals + ") Invalid FeeTx == 0";
+        strInvalid = "Invalid FeeTx == 0";
         return false;
     }
 
     // Can only pay out 10% of the possible coins (min value of coins)
     if (GetTotalPayout() > budget.GetTotalBudget(nBlockStart)) {
-        strInvalid = "Budget " + strBudgetName + " (" + strProposals + ") Invalid Payout (more than max)";
+        strInvalid = "Invalid Payout (more than max)";
         return false;
     }
 
@@ -1999,7 +1996,7 @@ bool CFinalizedBudget::UpdateValid(int nCurrentHeight, bool fCheckCollateral)
         int nConf = 0;
         if (!IsBudgetCollateralValid(nFeeTXHash, GetHash(), strError2, nTime, nConf, true)) {
             {
-                strInvalid = "Budget " + strBudgetName + " (" + strProposals + ") Invalid Collateral : " + strError2;
+                strInvalid = "Invalid Collateral : " + strError2;
                 return false;
             }
         }
@@ -2012,7 +2009,7 @@ bool CFinalizedBudget::UpdateValid(int nCurrentHeight, bool fCheckCollateral)
     int nMaxAge = nBlockStart - (2 * nBlocksPerCycle);
 
     if (GetBlockEnd() < nMaxAge) {
-        strInvalid = strprintf("Budget " + strBudgetName + " (" + strProposals + ") (ends at block %ld) too old and obsolete", GetBlockEnd());
+        strInvalid = strprintf("(ends at block %ld) too old and obsolete", GetBlockEnd());
         return false;
     }
 

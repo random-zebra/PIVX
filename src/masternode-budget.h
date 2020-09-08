@@ -409,7 +409,7 @@ public:
     // sets fValid and strInvalid, returns fValid
     bool UpdateValid(int nHeight, bool fCheckCollateral = true);
     bool IsValid() const  { return fValid; }
-    std::string IsInvalidReason() const { return strInvalid; }
+    std::string IsInvalidReason() const { return strprintf("%s (%s)", strBudgetName, strInvalid); }
 
     std::string GetName() const { return strBudgetName; }
     std::string GetProposals() const;
@@ -550,7 +550,7 @@ public:
     // Static checks that should be done only once - sets strInvalid
     bool IsWellFormed(const CAmount& nTotalBudget);
     bool IsValid() const  { return fValid; }
-    std::string IsInvalidReason() const { return strInvalid; }
+    std::string IsInvalidReason() const { return strprintf("%s (%s)", strProposalName, strInvalid); }
 
     bool IsEstablished() const;
     bool IsPassing(int nBlockStartBudget, int nBlockEndBudget, int mnCount) const;
