@@ -455,8 +455,14 @@ public:
     {
         READWRITE(LIMITED_STRING(strBudgetName, 20));
         READWRITE(nFeeTXHash);
-        READWRITE(nBlockFeeTx.get());
-        READWRITE(nTime.get());
+        int _nBlockFeeTx = nBlockFeeTx ? *nBlockFeeTx : 0;
+        int64_t _nTime = nTime ? *nTime : 0;
+        READWRITE(_nBlockFeeTx);
+        READWRITE(_nTime);
+        if (ser_action.ForRead()) {
+            if (_nBlockFeeTx) nBlockFeeTx = _nBlockFeeTx;
+            if (_nTime) nTime = _nTime;
+        }
         READWRITE(nBlockStart);
         READWRITE(vecBudgetPayments);
         READWRITE(fAutoChecked);
@@ -605,16 +611,21 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        //for syncing with other clients
         READWRITE(LIMITED_STRING(strProposalName, 20));
         READWRITE(LIMITED_STRING(strURL, 64));
         READWRITE(nBlockStart);
         READWRITE(nBlockEnd);
         READWRITE(nAmount);
         READWRITE(*(CScriptBase*)(&address));
-        READWRITE(nTime.get());
         READWRITE(nFeeTXHash);
-        READWRITE(nBlockFeeTx.get());
+        int _nBlockFeeTx = nBlockFeeTx ? *nBlockFeeTx : 0;
+        int64_t _nTime = nTime ? *nTime : 0;
+        READWRITE(_nBlockFeeTx);
+        READWRITE(_nTime);
+        if (ser_action.ForRead()) {
+            if (_nBlockFeeTx) nBlockFeeTx = _nBlockFeeTx;
+            if (_nTime) nTime = _nTime;
+        }
 
         //for saving to the serialized db
         READWRITE(mapVotes);
@@ -670,7 +681,11 @@ public:
         //for syncing with other clients
         READWRITE(LIMITED_STRING(strProposalName, 20));
         READWRITE(LIMITED_STRING(strURL, 64));
-        READWRITE(nTime.get());
+        int64_t _nTime = nTime ? *nTime : 0;
+        READWRITE(_nTime);
+        if (ser_action.ForRead() && _nTime) {
+            nTime = _nTime;
+        }
         READWRITE(nBlockStart);
         READWRITE(nBlockEnd);
         READWRITE(nAmount);
