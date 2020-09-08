@@ -390,6 +390,7 @@ private:
     bool CheckStartEnd();
     bool CheckAmount(const CAmount& nTotalBudget);
     bool CheckName();
+    bool CheckRequiredConfs(int nCurrentHeight);
 
 protected:
     std::map<uint256, CFinalizedBudgetVote> mapVotes;
@@ -399,7 +400,9 @@ protected:
     uint256 nFeeTXHash;
 
 public:
+    // Set in CBudgetManager::AddFinalizedBudget via CheckCollateral
     int64_t nTime;
+    int nBlockFeeTx;
 
     CFinalizedBudget();
     CFinalizedBudget(const CFinalizedBudget& other);
@@ -413,7 +416,7 @@ public:
     void SyncVotes(CNode* pfrom, bool fPartial, int& nInvCount) const;
 
     // sets fValid and strInvalid, returns fValid
-    bool UpdateValid(int nHeight, bool fCheckCollateral = true);
+    bool UpdateValid(int nHeight);
     // Static checks that should be done only once - sets strInvalid
     bool IsWellFormed(const CAmount& nTotalBudget);
     bool IsValid() const  { return fValid; }
@@ -455,6 +458,7 @@ public:
     {
         READWRITE(LIMITED_STRING(strBudgetName, 20));
         READWRITE(nFeeTXHash);
+        READWRITE(nBlockFeeTx);
         READWRITE(nTime);
         READWRITE(nBlockStart);
         READWRITE(vecBudgetPayments);
@@ -528,6 +532,7 @@ private:
     bool CheckStartEnd();
     bool CheckAmount(const CAmount& nTotalBudget);
     bool CheckAddress();
+    bool CheckRequiredConfs(int nCurrentHeight);
 
 protected:
     std::map<uint256, CBudgetVote> mapVotes;
@@ -540,7 +545,9 @@ protected:
     uint256 nFeeTXHash;
 
 public:
+    // Set in CBudgetManager::AddProposal via CheckCollateral
     int64_t nTime;
+    int nBlockFeeTx;
 
     CBudgetProposal();
     CBudgetProposal(const CBudgetProposal& other);
@@ -554,7 +561,7 @@ public:
     void SyncVotes(CNode* pfrom, bool fPartial, int& nInvCount) const;
 
     // sets fValid and strInvalid, returns fValid
-    bool UpdateValid(int nHeight, bool fCheckCollateral = true);
+    bool UpdateValid(int nHeight);
     // Static checks that should be done only once - sets strInvalid
     bool IsWellFormed(const CAmount& nTotalBudget);
     bool IsValid() const  { return fValid; }
@@ -611,6 +618,7 @@ public:
         READWRITE(*(CScriptBase*)(&address));
         READWRITE(nTime);
         READWRITE(nFeeTXHash);
+        READWRITE(nBlockFeeTx);
 
         //for saving to the serialized db
         READWRITE(mapVotes);
