@@ -397,18 +397,30 @@ void DumpBudgets()
 
 bool CBudgetManager::AddFinalizedBudget(CFinalizedBudget& finalizedBudget)
 {
-    LOCK(cs_budgets);
+    AssertLockNotHeld(cs_budgets);    // need to lock cs_main here (CheckCollateral)
 
-    if (!finalizedBudget.UpdateValid(GetBestHeight())) {
-        LogPrint(BCLog::MNBUDGET,"%s: invalid finalized budget - %s\n", __func__, finalizedBudget.IsInvalidReason());
+    const uint256& hash = finalizedBudget.GetHash();
+    const std::string& strName = finalizedBudget.GetName();
+    if (WITH_LOCK(cs_budgets, return mapFinalizedBudgets.count(hash))) {
+        LogPrint(BCLog::MNBUDGET,"%s: finalized budget %s already added\n", __func__, strName);
         return false;
     }
 
-    if (mapFinalizedBudgets.count(finalizedBudget.GetHash())) {
+    if (!finalizedBudget.IsWellFormed(GetTotalBudget(GetBestHeight()))) {
+        LogPrint(BCLog::MNBUDGET,"%s: invalid finalized budget: %s\n", __func__, finalizedBudget.IsInvalidReason());
         return false;
     }
 
-    mapFinalizedBudgets.insert(std::make_pair(finalizedBudget.GetHash(), finalizedBudget));
+    int nConf = 0;
+    std::string strError;
+    if (!CheckCollateral(finalizedBudget.GetFeeTXHash(), hash, strError, finalizedBudget.nTime, nConf, true)) {
+        LogPrint(BCLog::MNBUDGET,"%s: invalid finalized budget (%s) collateral - %s\n",
+                __func__, strName, strError);
+        return false;
+    }
+
+    WITH_LOCK(cs_budgets, mapFinalizedBudgets.emplace(hash, finalizedBudget); );
+    LogPrint(BCLog::MNBUDGET,"%s: finalized budget %s added\n", __func__, strName);
     return true;
 }
 
@@ -2024,11 +2036,6 @@ bool CFinalizedBudget::IsWellFormed(const CAmount& nTotalBudget)
 bool CFinalizedBudget::UpdateValid(int nCurrentHeight, bool fCheckCollateral)
 {
     fValid = false;
-
-    // Checks that don't change. !TODO: remove from here, they should be done only once.
-    if (!IsWellFormed(budget.GetTotalBudget(nBlockStart))) {
-        return false;
-    }
 
     std::string strError = "";
     if (fCheckCollateral) {
