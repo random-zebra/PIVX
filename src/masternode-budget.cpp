@@ -23,7 +23,7 @@ std::map<uint256, int64_t> askedForSourceProposalOrBudget;
 
 int nSubmittedFinalBudget;
 
-bool CheckCollateral(const uint256& nTxCollateralHash, const uint256& nExpectedHash, std::string& strError, int64_t& nTime, int& nHeight, bool fBudgetFinalization)
+bool CheckCollateral(const uint256& nTxCollateralHash, const uint256& nExpectedHash, std::string& strError, Optional<int64_t>& nTime, Optional<int>& nHeight, bool fBudgetFinalization)
 {
     CTransaction txCollateral;
     uint256 nBlockHash;
@@ -92,11 +92,15 @@ bool CheckCollateral(const uint256& nTxCollateralHash, const uint256& nExpectedH
     return true;
 }
 
-bool CheckCollateralConfs(const uint256& nTxCollateralHash, int nCurrentHeight, int nProposalHeight, std::string& strError)
+bool CheckCollateralConfs(const uint256& nTxCollateralHash, int nCurrentHeight, Optional<int> nProposalHeight, std::string& strError)
 {
-    //if we're syncing we won't have swiftTX information, so accept 1 confirmation
+    // height not set - Proposal not added to the map.
+    if (!nProposalHeight) {
+        return error("%s: called on non-Added proposal", __func__);
+    }
+    // if we're syncing we won't have swiftTX information, so accept 1 confirmation
     const int nRequiredConfs = Params().GetConsensus().nBudgetFeeConfirmations;
-    const int nConf = GetIXConfirmations(nTxCollateralHash) + nCurrentHeight - nProposalHeight + 1;
+    const int nConf = GetIXConfirmations(nTxCollateralHash) + nCurrentHeight - nProposalHeight.get() + 1;
 
     if (nConf < nRequiredConfs) {
         strError = strprintf("Collateral requires at least %d confirmations - %d confirmations", nRequiredConfs, nConf);
@@ -1227,8 +1231,8 @@ CBudgetProposal::CBudgetProposal()
     nBlockStart = 0;
     nBlockEnd = 0;
     nAmount = 0;
-    nBlockFeeTx = 0;
-    nTime = 0;
+    nBlockFeeTx = nullopt;
+    nTime = nullopt;
     fValid = true;
     strInvalid = "";
 }
@@ -1241,7 +1245,8 @@ CBudgetProposal::CBudgetProposal(std::string strProposalNameIn, std::string strU
     nBlockEnd = nBlockEndIn;
     address = addressIn;
     nAmount = nAmountIn;
-    nBlockFeeTx = 0;
+    nBlockFeeTx = nullopt;
+    nTime = nullopt;
     nFeeTXHash = nFeeTXHashIn;
     fValid = true;
     strInvalid = "";
@@ -1638,7 +1643,8 @@ CFinalizedBudget::CFinalizedBudget() :
         nBlockStart(0),
         vecBudgetPayments(),
         nFeeTXHash(),
-        nTime(0)
+        nTime(nullopt),
+        nBlockFeeTx(nullopt)
 { }
 
 CFinalizedBudget::CFinalizedBudget(const CFinalizedBudget& other) :
@@ -1650,7 +1656,8 @@ CFinalizedBudget::CFinalizedBudget(const CFinalizedBudget& other) :
         nBlockStart(other.nBlockStart),
         vecBudgetPayments(other.vecBudgetPayments),
         nFeeTXHash(other.nFeeTXHash),
-        nTime(other.nTime)
+        nTime(other.nTime),
+        nBlockFeeTx(other.nBlockFeeTx)
 { }
 
 bool CFinalizedBudget::AddOrUpdateVote(const CFinalizedBudgetVote& vote, std::string& strError)

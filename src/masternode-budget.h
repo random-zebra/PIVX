@@ -398,8 +398,8 @@ protected:
 
 public:
     // Set in CBudgetManager::AddFinalizedBudget via CheckCollateral
-    int64_t nTime;
-    int nBlockFeeTx;
+    Optional<int64_t> nTime;
+    Optional<int> nBlockFeeTx;
 
     CFinalizedBudget();
     CFinalizedBudget(const CFinalizedBudget& other);
@@ -455,8 +455,8 @@ public:
     {
         READWRITE(LIMITED_STRING(strBudgetName, 20));
         READWRITE(nFeeTXHash);
-        READWRITE(nBlockFeeTx);
-        READWRITE(nTime);
+        READWRITE(nBlockFeeTx.get());
+        READWRITE(nTime.get());
         READWRITE(nBlockStart);
         READWRITE(vecBudgetPayments);
         READWRITE(fAutoChecked);
@@ -543,8 +543,8 @@ protected:
 
 public:
     // Set in CBudgetManager::AddProposal via CheckCollateral
-    int64_t nTime;
-    int nBlockFeeTx;
+    Optional<int64_t> nTime;
+    Optional<int> nBlockFeeTx;
 
     CBudgetProposal();
     CBudgetProposal(const CBudgetProposal& other);
@@ -608,14 +608,13 @@ public:
         //for syncing with other clients
         READWRITE(LIMITED_STRING(strProposalName, 20));
         READWRITE(LIMITED_STRING(strURL, 64));
-        READWRITE(nTime);
         READWRITE(nBlockStart);
         READWRITE(nBlockEnd);
         READWRITE(nAmount);
         READWRITE(*(CScriptBase*)(&address));
-        READWRITE(nTime);
+        READWRITE(nTime.get());
         READWRITE(nFeeTXHash);
-        READWRITE(nBlockFeeTx);
+        READWRITE(nBlockFeeTx.get());
 
         //for saving to the serialized db
         READWRITE(mapVotes);
@@ -671,7 +670,7 @@ public:
         //for syncing with other clients
         READWRITE(LIMITED_STRING(strProposalName, 20));
         READWRITE(LIMITED_STRING(strURL, 64));
-        READWRITE(nTime);
+        READWRITE(nTime.get());
         READWRITE(nBlockStart);
         READWRITE(nBlockEnd);
         READWRITE(nAmount);
