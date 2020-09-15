@@ -107,7 +107,7 @@ uint256 SignatureHash(const CScript &scriptCode, const CTransaction& txTo, unsig
 class BaseSignatureChecker
 {
 public:
-    virtual bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const
+    virtual bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode) const
     {
         return false;
     }
@@ -140,7 +140,7 @@ public:
     TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), precomTxData(nullptr) {}
     TransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const PrecomputedTransactionData& cachedHashesIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), precomTxData(&cachedHashesIn) {}
 
-    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const override ;
+    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode) const override ;
     bool CheckLockTime(const CScriptNum& nLockTime) const override;
     bool CheckColdStake(const CScript& script) const override {
         return txTo->CheckColdStake(script);

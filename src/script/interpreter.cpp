@@ -848,7 +848,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                         //serror is set
                         return false;
                     }
-                    bool fSuccess = checker.CheckSig(vchSig, vchPubKey, scriptCode, sigversion);
+                    bool fSuccess = checker.CheckSig(vchSig, vchPubKey, scriptCode);
 
                     popstack(stack);
                     popstack(stack);
@@ -916,7 +916,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                         }
 
                         // Check signature
-                        bool fOk = checker.CheckSig(vchSig, vchPubKey, scriptCode, sigversion);
+                        bool fOk = checker.CheckSig(vchSig, vchPubKey, scriptCode);
 
                         if (fOk) {
                             isig++;
@@ -1277,7 +1277,7 @@ bool TransactionSignatureChecker::VerifySignature(const std::vector<unsigned cha
     return pubkey.Verify(sighash, vchSig);
 }
 
-bool TransactionSignatureChecker::CheckSig(const std::vector<unsigned char>& vchSigIn, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const
+bool TransactionSignatureChecker::CheckSig(const std::vector<unsigned char>& vchSigIn, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode) const
 {
     CPubKey pubkey(vchPubKey);
     if (!pubkey.IsValid())
