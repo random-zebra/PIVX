@@ -18,7 +18,7 @@ typedef std::vector<unsigned char> valtype;
 
 TransactionSignatureCreator::TransactionSignatureCreator(const CKeyStore* keystoreIn, const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), checker(txTo, nIn, amountIn) {}
 
-bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& address, const CScript& scriptCode, SigVersion sigversion) const
+bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& address, const CScript& scriptCode) const
 {
     CKey key;
     if (!keystore->GetKey(address, key))
@@ -37,16 +37,16 @@ bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, 
     return true;
 }
 
-static bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, std::vector<valtype>& ret, SigVersion sigversion)
+static bool Sign1(const CKeyID& address, const BaseSignatureCreator& creator, const CScript& scriptCode, std::vector<valtype>& ret)
 {
     std::vector<unsigned char> vchSig;
-    if (!creator.CreateSig(vchSig, address, scriptCode, sigversion))
+    if (!creator.CreateSig(vchSig, address, scriptCode))
         return false;
     ret.emplace_back(vchSig);
     return true;
 }
 
-static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, std::vector<valtype>& ret, SigVersion sigversion)
+static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const CScript& scriptCode, std::vector<valtype>& ret)
 {
     int nSigned = 0;
     int nRequired = multisigdata.front()[0];
@@ -54,7 +54,7 @@ static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureC
     {
         const valtype& pubkey = multisigdata[i];
         CKeyID keyID = CPubKey(pubkey).GetID();
-        if (Sign1(keyID, creator, scriptCode, ret, sigversion))
+        if (Sign1(keyID, creator, scriptCode, ret))
             ++nSigned;
     }
     return nSigned==nRequired;
@@ -67,7 +67,7 @@ static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureC
  * Returns false if scriptPubKey could not be completely satisfied.
  */
 static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptPubKey,
-                     std::vector<valtype>& ret, txnouttype& whichTypeRet, SigVersion sigversion, bool fColdStake)
+                     std::vector<valtype>& ret, txnouttype& whichTypeRet, bool fColdStake)
 {
     CScript scriptRet;
     uint160 h160;
@@ -87,10 +87,10 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
         return false;
     case TX_PUBKEY:
         keyID = CPubKey(vSolutions[0]).GetID();
-        return Sign1(keyID, creator, scriptPubKey, ret, sigversion);
+        return Sign1(keyID, creator, scriptPubKey, ret);
     case TX_PUBKEYHASH:
         keyID = CKeyID(uint160(vSolutions[0]));
-        if (!Sign1(keyID, creator, scriptPubKey, ret, sigversion))
+        if (!Sign1(keyID, creator, scriptPubKey, ret))
             return false;
         else
         {
@@ -108,7 +108,7 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
 
     case TX_MULTISIG:
         ret.push_back(valtype()); // workaround CHECKMULTISIG bug
-        return (SignN(vSolutions, creator, scriptPubKey, ret, sigversion));
+        return (SignN(vSolutions, creator, scriptPubKey, ret));
 
     case TX_COLDSTAKE:
         if (fColdStake) {
@@ -118,7 +118,7 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
             // sign with the owner key
             keyID = CKeyID(uint160(vSolutions[1]));
         }
-        if (!Sign1(keyID, creator, scriptPubKey, ret, sigversion))
+        if (!Sign1(keyID, creator, scriptPubKey, ret))
             return error("*** %s: failed to sign with the %s key.",
                     __func__, fColdStake ? "cold staker" : "owner");
         CPubKey vch;
@@ -157,7 +157,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
     bool solved = true;
     std::vector<valtype> result;
     txnouttype whichType;
-    solved = SignStep(creator, script, result, whichType, SIGVERSION_BASE, fColdStake);
+    solved = SignStep(creator, script, result, whichType, fColdStake);
     CScript subscript;
 
     if (solved && whichType == TX_SCRIPTHASH)
@@ -166,7 +166,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CScript& fromPu
         // the final scriptSig is the signatures from that
         // and then the serialized subscript:
         script = subscript = CScript(result[0].begin(), result[0].end());
-        solved = solved && SignStep(creator, script, result, whichType, SIGVERSION_BASE, fColdStake) && whichType != TX_SCRIPTHASH;
+        solved = solved && SignStep(creator, script, result, whichType, fColdStake) && whichType != TX_SCRIPTHASH;
         result.push_back(std::vector<unsigned char>(subscript.begin(), subscript.end()));
     }
 
@@ -365,7 +365,7 @@ const BaseSignatureChecker& DummySignatureCreator::Checker() const
     return dummyChecker;
 }
 
-bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const
+bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode) const
 {
     // Create a dummy signature that is a valid DER-encoding
     vchSig.assign(72, '\000');
