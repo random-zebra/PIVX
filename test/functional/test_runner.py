@@ -61,6 +61,7 @@ BASE_SCRIPTS= [
 
     # vv Tests less than 5m vv
     'wallet_zapwallettxes.py',                  # ~ 300 sec
+    'feature_reindex.py',                       # ~ 290 sec
     'p2p_time_offset.py',                       # ~ 267 sec
     'rpc_fundrawtransaction.py',                # ~ 260 sec
     'mining_pos_coldStaking.py',                # ~ 215 sec
@@ -84,7 +85,6 @@ BASE_SCRIPTS= [
     'p2p_disconnect_ban.py',                    # ~ 118 sec
     'wallet_listreceivedby.py',                 # ~ 117 sec
     'mining_pos_fakestake.py',                  # ~ 113 sec
-    'feature_reindex.py',                       # ~ 110 sec
     'interface_http.py',                        # ~ 105 sec
     'wallet_listtransactions.py',               # ~ 97 sec
     'mempool_reorg.py',                         # ~ 92 sec

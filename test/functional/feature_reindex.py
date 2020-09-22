@@ -19,19 +19,25 @@ class ReindexTest(PivxTestFramework):
         self.setup_clean_chain = True
         self.num_nodes = 1
 
-    def reindex(self):
+    def reindex(self, justchainstate=False):
         self.nodes[0].generate(3)
         blockcount = self.nodes[0].getblockcount()
         self.stop_nodes()
+        self.log.info("Stopping node...")
         time.sleep(5)
-        extra_args = [["-reindex", "-checkblockindex=1"]]
+        extra_args = [["-reindex-chainstate" if justchainstate else "-reindex", "-checkblockindex=1"]]
+        self.log.info("Reindexing %s [block count: %d]" % (
+            "chainstate" if justchainstate else "blocks", blockcount))
         self.start_nodes(extra_args)
         time.sleep(15)
         wait_until(lambda: self.nodes[0].getblockcount() == blockcount)
         self.log.info("Success")
 
     def run_test(self):
-        self.reindex()
+        self.reindex(False)
+        self.reindex(True)
+        self.reindex(False)
+        self.reindex(True)
 
 if __name__ == '__main__':
     ReindexTest().main()
