@@ -47,7 +47,7 @@ public Q_SLOTS:
     void updateDisplayUnit();
 
     void setNumConnections(int count);
-    void setNumBlocks(int count);
+    void setNumBlocks(int count, bool headers);
     void setStakingStatusActive(bool fActive);
     void updateStakingStatus();
     void updateHDState(const bool& upgraded, const QString& upgradeError);

@@ -373,7 +373,7 @@ void TopBar::loadClientModel()
         setNumConnections(clientModel->getNumConnections());
         connect(clientModel, &ClientModel::numConnectionsChanged, this, &TopBar::setNumConnections);
 
-        setNumBlocks(clientModel->getNumBlocks());
+        setNumBlocks(clientModel->getNumBlocks(), false);
         connect(clientModel, &ClientModel::numBlocksChanged, this, &TopBar::setNumBlocks);
 
         timerStakingIcon = new QTimer(ui->pushButtonStack);
@@ -420,7 +420,7 @@ void TopBar::setNumConnections(int count)
     ui->pushButtonConnection->setButtonText(tr("%n active connection(s)", "", count));
 }
 
-void TopBar::setNumBlocks(int count)
+void TopBar::setNumBlocks(int count, bool headers)
 {
     if (!clientModel)
         return;
@@ -430,15 +430,17 @@ void TopBar::setNumBlocks(int count)
     std::string text = "";
     switch (blockSource) {
         case BLOCK_SOURCE_NETWORK:
+            if (headers) return;
             text = "Synchronizing..";
             break;
         case BLOCK_SOURCE_DISK:
-            text = "Importing blocks from disk..";
+            text = headers ? "Indexing blocks from disk..." : "Processing blocks on disk...";
             break;
         case BLOCK_SOURCE_REINDEX:
             text = "Reindexing blocks on disk..";
             break;
         case BLOCK_SOURCE_NONE:
+            if (headers) return;
             // Case: not Importing, not Reindexing and no network connection
             text = "No block source available..";
             ui->pushButtonSync->setChecked(false);

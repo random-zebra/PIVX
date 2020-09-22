@@ -25,7 +25,7 @@ public:
 
 private Q_SLOTS:
     void setNumConnections(int count);
-    void setNumBlocks(int count);
+    void setNumBlocks(int count, bool headers);
     void setMasternodeCount(const QString& strMasternodes);
     void showEvent(QShowEvent* event) override;
     void hideEvent(QHideEvent* event) override;

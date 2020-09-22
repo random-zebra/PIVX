@@ -118,7 +118,7 @@ void SettingsInformationWidget::loadClientModel()
         setNumConnections(clientModel->getNumConnections());
         connect(clientModel, &ClientModel::numConnectionsChanged, this, &SettingsInformationWidget::setNumConnections);
 
-        setNumBlocks(clientModel->getNumBlocks());
+        setNumBlocks(clientModel->getNumBlocks(), false);
         connect(clientModel, &ClientModel::numBlocksChanged, this, &SettingsInformationWidget::setNumBlocks);
 
         connect(clientModel, &ClientModel::strMasternodesChanged, this, &SettingsInformationWidget::setMasternodeCount);
@@ -137,8 +137,9 @@ void SettingsInformationWidget::setNumConnections(int count)
     ui->labelInfoConnections->setText(connections);
 }
 
-void SettingsInformationWidget::setNumBlocks(int count)
+void SettingsInformationWidget::setNumBlocks(int count, bool headers)
 {
+    if (headers) return;
     ui->labelInfoBlockNumber->setText(QString::number(count));
     if (clientModel) {
         ui->labelInfoBlockTime->setText(clientModel->getLastBlockDate().toString());

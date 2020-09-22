@@ -387,7 +387,7 @@ void RPCConsole::setClientModel(ClientModel* model)
         setNumConnections(model->getNumConnections());
         connect(model, &ClientModel::numConnectionsChanged, this, &RPCConsole::setNumConnections);
 
-        setNumBlocks(model->getNumBlocks());
+        setNumBlocks(model->getNumBlocks(), false);
         connect(model, &ClientModel::numBlocksChanged, this, &RPCConsole::setNumBlocks);
 
         connect(model, &ClientModel::strMasternodesChanged, this, &RPCConsole::setMasternodeCount);
@@ -661,8 +661,9 @@ void RPCConsole::setNumConnections(int count)
     ui->numberOfConnections->setText(connections);
 }
 
-void RPCConsole::setNumBlocks(int count)
+void RPCConsole::setNumBlocks(int count, bool headers)
 {
+    if (headers) return;
     ui->numberOfBlocks->setText(QString::number(count));
     if (clientModel) {
         ui->lastBlockTime->setText(clientModel->getLastBlockDate().toString());
