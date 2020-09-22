@@ -649,10 +649,10 @@ struct CImportingNow {
 void ThreadImport(std::vector<fs::path> vImportFiles)
 {
     util::ThreadRename("pivx-loadblk");
+    CImportingNow imp;
 
     // -reindex
     if (fReindex) {
-        CImportingNow imp;
         int nFile = 0;
         while (true) {
             CDiskBlockPos pos(nFile, 0);
@@ -677,7 +677,6 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     if (fs::exists(pathBootstrap)) {
         FILE* file = fsbridge::fopen(pathBootstrap, "rb");
         if (file) {
-            CImportingNow imp;
             fs::path pathBootstrapOld = GetDataDir() / "bootstrap.dat.old";
             LogPrintf("Importing bootstrap.dat...\n");
             LoadExternalBlockFile(file);
@@ -691,12 +690,18 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     for (fs::path& path : vImportFiles) {
         FILE* file = fsbridge::fopen(path, "rb");
         if (file) {
-            CImportingNow imp;
             LogPrintf("Importing blocks file %s...\n", path.string());
             LoadExternalBlockFile(file);
         } else {
             LogPrintf("Warning: Could not open blocks file %s\n", path.string());
         }
+    }
+
+    // scan for better chains in the block chain database, that are not yet connected in the active best chain
+    CValidationState state;
+    if (!ActivateBestChain(state)) {
+        LogPrintf("Failed to connect best block");
+        StartShutdown();
     }
 
     if (GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
@@ -1711,10 +1716,6 @@ bool AppInit2()
     if (mapArgs.count("-blocksizenotify"))
         uiInterface.NotifyBlockSize.connect(BlockSizeNotifyCallback);
 
-    // scan for better chains in the block chain database, that are not yet connected in the active best chain
-    CValidationState state;
-    if (!ActivateBestChain(state))
-        strErrors << "Failed to connect best block";
     // update g_best_block if needed
     {
         LOCK(g_best_block_mutex);
