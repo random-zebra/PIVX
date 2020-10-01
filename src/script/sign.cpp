@@ -123,7 +123,8 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
                     __func__, fColdStake ? "cold staker" : "owner");
         CPubKey vch;
         if (!creator.KeyStore().GetPubKey(keyID, vch))
-            return error("%s : Unable to get public key from keyID", __func__);
+            return error("%s : Unable to get public key from keyID (%s)",
+                    __func__, (fColdStake ? "staker" : "owner"));
 
         valtype oper;
         oper.reserve(4);
