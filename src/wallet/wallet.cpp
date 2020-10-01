@@ -2591,6 +2591,9 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend,
                                 sigdata,
                                 !haveKey // fColdStake = false
                         );
+                        if (!signSuccess)
+                            return error("Signature failed for coin %s-%d, haveKey is %d, delegation credit %d",
+                                    coin.first->GetHash().ToString(), coin.second, haveKey, coin.first->GetStakeDelegationCredit());
                     } else {
                         signSuccess = ProduceSignature(
                                 DummySignatureCreator(this), scriptPubKey, sigdata, false);
