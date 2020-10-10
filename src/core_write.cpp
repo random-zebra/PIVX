@@ -199,7 +199,9 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 
     if (tx.nVersion == CTransaction::SAPLING_VERSION) {
         if (tx.sapData) {
-            // !TODO: add missing sapling data
+            entry.pushKV("shielded_balance", FormatMoney(tx.sapData->valueBalance));
+            entry.pushKV("shielded_spends", (int)tx.sapData->vShieldedSpend.size());
+            entry.pushKV("shielded_outputs", (int)tx.sapData->vShieldedOutput.size());
         }
         if (tx.vExtraPayload) {
             entry.pushKV("extraPayloadSize", (int)tx.vExtraPayload->size());
