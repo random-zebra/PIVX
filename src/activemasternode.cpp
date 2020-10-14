@@ -14,7 +14,7 @@
 #include "netbase.h"
 #include "protocol.h"
 
-void initMasternode(const std::string& _strMasterNodePrivKey, const std::string _strMasterNodeAddr, bool isFromInit)
+void initMasternode(const std::string& _strMasterNodePrivKey, const std::string& _strMasterNodeAddr, bool isFromInit)
 {
     if (!isFromInit && fMasterNode) {
         throw std::runtime_error("ERROR: Masternode already initialized.\n");

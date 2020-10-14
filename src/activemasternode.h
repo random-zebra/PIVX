@@ -19,7 +19,7 @@
 #define ACTIVE_MASTERNODE_STARTED 4
 
 // Responsible for initializing the masternode
-void initMasternode(const std::string& strMasterNodePrivKey, const std::string strMasterNodeAddr, bool isFromInit);
+void initMasternode(const std::string& strMasterNodePrivKey, const std::string& strMasterNodeAddr, bool isFromInit);
 
 // Responsible for activating the Masternode and pinging the network
 class CActiveMasternode
