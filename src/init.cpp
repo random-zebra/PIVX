@@ -45,6 +45,7 @@
 #include "torcontrol.h"
 #include "guiinterface.h"
 #include "guiinterfaceutil.h"
+#include "sync.h"
 #include "util.h"
 #include "utilmoneystr.h"
 #include "util/threadnames.h"
@@ -409,6 +410,9 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-disablesystemnotifications", strprintf(_("Disable OS notifications for incoming transactions (default: %u)"), 0));
     strUsage += HelpMessageOpt("-dbcache=<n>", strprintf(_("Set database cache size in megabytes (%d to %d, default: %d)"), nMinDbCache, nMaxDbCache, nDefaultDbCache));
     strUsage += HelpMessageOpt("-loadblock=<file>", _("Imports blocks from external blk000??.dat file") + " " + _("on startup"));
+#ifdef DEBUG_LOCKORDER
+    strUsage += HelpMessageOpt("-lockorderabort", _("Abort if a lock-order inconsistency is detected"));
+#endif
     strUsage += HelpMessageOpt("-maxreorg=<n>", strprintf(_("Set the Maximum reorg depth (default: %u)"), DEFAULT_MAX_REORG_DEPTH));
     strUsage += HelpMessageOpt("-maxorphantx=<n>", strprintf(_("Keep at most <n> unconnectable transactions in memory (default: %u)"), DEFAULT_MAX_ORPHAN_TRANSACTIONS));
     strUsage += HelpMessageOpt("-maxmempool=<n>", strprintf(_("Keep the transaction memory pool below <n> megabytes (default: %u)"), DEFAULT_MAX_MEMPOOL_SIZE));
@@ -1014,7 +1018,9 @@ bool AppInit2()
             }
         }
     }
-
+#ifdef DEBUG_LOCKORDER
+    g_debug_lockorder_abort = GetBoolArg("-lockorderabort", false);
+#endif
     // Check for -debugnet
     if (GetBoolArg("-debugnet", false))
         UIWarning(_("Warning: Unsupported argument -debugnet ignored, use -debug=net."));
