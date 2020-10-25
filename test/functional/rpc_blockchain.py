@@ -1,112 +1,123 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2017 The Bitcoin Core developers
+# Copyright (c) 2020 The PIVX developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Test RPCs related to blockchainstate.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-Test the following RPCs:
-    - getblockchaininfo
-    - gettxoutsetinfo
-    - getdifficulty
-    - getbestblockhash
-    - getblockhash
-    - getblockheader
-    - getchaintxstats
-    - getnetworkhashps
-    - verifychain
-
-Tests correspond to code in rpc/blockchain.cpp.
-"""
-
-from decimal import Decimal
-import http.client
-import subprocess
-
-from test_framework.test_framework import PivxTestFramework
+from test_framework.test_framework import PivxTier2TestFramework
 from test_framework.util import (
     assert_equal,
-    assert_greater_than,
-    assert_greater_than_or_equal,
-    assert_raises,
-    assert_raises_rpc_error,
-    assert_is_hex_string,
-    assert_is_hash_string,
+    connect_nodes_clique,
+    disconnect_nodes,
+    satoshi_round,
+    sync_blocks,
+    wait_until,
 )
 
-class BlockchainTest(PivxTestFramework):
-    def set_test_params(self):
-        self.num_nodes = 1
+import time
+
+"""
+Test checking:
+ 1) Masternode setup/creation.
+ 2) Tier two network sync (masternode broadcasting).
+ 3) Masternode activation.
+ 4) Masternode expiration.
+ 5) Masternode re activation.
+ 6) Masternode removal.
+ 7) Masternode collateral spent removal.
+"""
+
+class MasternodeActivationTest(PivxTier2TestFramework):
+
+    def disconnect_remotes(self):
+        for i in [self.remoteOnePos, self.remoteTwoPos]:
+            disconnect_nodes(self.nodes[i + 1], i)
+            disconnect_nodes(self.nodes[i], i - 1)
+
+    def reconnect_remotes(self):
+        # !TODO: for some reason we need two-way connections now...
+        connect_nodes_clique(self.nodes)
+        self.sync_all()
+
+    def reconnect_and_restart_masternodes(self):
+        self.log.info("Reconnecting nodes and sending start message again...")
+        self.reconnect_remotes()
+        time.sleep(2)
+        self.wait_until_mnsync_finished(15)
+        self.controller_start_all_masternodes()
+
+    def spend_collateral(self):
+        mnCollateralOutput = self.ownerOne.getmasternodeoutputs()[0]
+        assert_equal(mnCollateralOutput["txhash"], self.mnOneTxHash)
+        mnCollateralOutputIndex = mnCollateralOutput["outputidx"]
+        send_value = satoshi_round(10000 - 0.001)
+        inputs = [{'txid' : self.mnOneTxHash, 'vout' : mnCollateralOutputIndex}]
+        outputs = {}
+        outputs[self.ownerOne.getnewaddress()] = float(send_value)
+        rawtx = self.ownerOne.createrawtransaction(inputs, outputs)
+        signedtx = self.ownerOne.signrawtransaction(rawtx)
+        txid = self.miner.sendrawtransaction(signedtx['hex'])
+        self.log.info("Collateral spent in %s" % txid)
+        self.send_pings([self.remoteOne, self.remoteTwo])
+        self.stake(1, [self.remoteOne, self.remoteTwo])
+
+    # Similar to base class wait_until_mn_status but skipping the disconnected nodes
+    def wait_until_mn_expired(self, _timeout, removed=False):
+        collaterals = {
+            self.remoteOnePos: self.mnOneTxHash,
+            self.remoteTwoPos: self.mnTwoTxHash
+        }
+        for k in collaterals:
+            for i in range(self.num_nodes):
+                # skip check on disconnected remote node
+                if i == k:
+                    continue
+                try:
+                    if removed:
+                        wait_until(lambda: (self.get_mn_status(self.nodes[i], collaterals[k]) == "" or
+                                            self.get_mn_status(self.nodes[i], collaterals[k]) == "REMOVE"),
+                                   timeout=_timeout, mocktime=self.advance_mocktime)
+                    else:
+                        wait_until(lambda: self.get_mn_status(self.nodes[i], collaterals[k]) == "EXPIRED",
+                                   timeout=_timeout, mocktime=self.advance_mocktime)
+                except AssertionError:
+                    s = "EXPIRED" if not removed else "REMOVE"
+                    strErr = "Unable to get status \"%s\" on node %d for mnode %s" % (s, i, collaterals[k])
+                    raise AssertionError(strErr)
+
 
     def run_test(self):
-        #self._test_getblockchaininfo()
-        self._test_gettxoutsetinfo()
-        self._test_getblockheader()
-        #self._test_getdifficulty()
-        self.nodes[0].verifychain(0)
+        self.enable_mocktime()
+        self.setup_2_masternodes_network()
 
-    def _test_getblockchaininfo(self):
-        self.log.info("Test getblockchaininfo")
+        # check masternode expiration
+        self.log.info("testing expiration now.")
+        expiration_time = 180  # regtest expiration time
+        self.log.info("disconnect remote and move time %d seconds in the future..." % expiration_time)
+        self.disconnect_remotes()
+        self.advance_mocktime_and_stake(expiration_time)
+        self.wait_until_mn_expired(30)
+        self.log.info("masternodes expired successfully")
 
-        keys = [
-            'bestblockhash',
-            'blocks',
-            'chain',
-            'chainwork',
-            'difficulty',
-            'headers',
-            'verificationprogress',
-            'warnings',
-        ]
-        res = self.nodes[0].getblockchaininfo()
-        # result should have these additional pruning keys if manual pruning is enabled
-        assert_equal(sorted(res.keys()), sorted(keys))
+        # check masternode removal
+        self.log.info("testing removal now.")
+        removal_time = 200  # regtest removal time
+        self.advance_mocktime_and_stake(removal_time - expiration_time)
+        self.wait_until_mn_expired(30, removed=True)
+        self.log.info("masternodes removed successfully")
 
-    def _test_gettxoutsetinfo(self):
-        node = self.nodes[0]
-        res = node.gettxoutsetinfo()
+        # restart and check spending the collateral now.
+        self.reconnect_and_restart_masternodes()
+        self.advance_mocktime(30)
+        self.log.info("spending the collateral now..")
+        self.spend_collateral()
+        sync_blocks(self.nodes)
+        self.log.info("checking mn status..")
+        time.sleep(5)           # wait a little bit
+        self.wait_until_mn_vinspent(self.mnOneTxHash, 30)
+        self.log.info("masternode list updated successfully, vin spent")
 
-        assert_equal(res['total_amount'], Decimal('50000.00000000'))
-        assert_equal(res['transactions'], 200)
-        assert_equal(res['height'], 200)
-        assert_equal(res['txouts'], 200)
-        assert_equal(res['bestblock'], node.getblockhash(200))
-        size = res['disk_size']
-        assert_greater_than_or_equal(size, 6400)
-        assert_greater_than_or_equal(64000, size)
-        assert_equal(len(res['bestblock']), 64)
-        assert_equal(len(res['hash_serialized_2']), 64)
 
-    def _test_getblockheader(self):
-        node = self.nodes[0]
 
-        assert_raises_rpc_error(-5, "Block not found",
-                              node.getblockheader, "nonsense")
-
-        besthash = node.getbestblockhash()
-        secondbesthash = node.getblockhash(199)
-        header = node.getblockheader(besthash)
-
-        assert_equal(header['hash'], besthash)
-        assert_equal(header['height'], 200)
-        assert_equal(header['confirmations'], 1)
-        assert_equal(header['previousblockhash'], secondbesthash)
-        assert_is_hex_string(header['chainwork'])
-        assert_is_hash_string(header['hash'])
-        assert_is_hash_string(header['previousblockhash'])
-        assert_is_hash_string(header['merkleroot'])
-        assert_is_hash_string(header['bits'], length=None)
-        assert isinstance(header['time'], int)
-        #assert isinstance(header['mediantime'], int)
-        assert isinstance(header['nonce'], int)
-        assert isinstance(header['version'], int)
-        #assert isinstance(int(header['versionHex'], 16), int)
-        assert isinstance(header['difficulty'], Decimal)
-
-    def _test_getdifficulty(self):
-        difficulty = self.nodes[0].getdifficulty()
-        # 1 hash in 2 should be valid, so difficulty should be 1/2**31
-        # binary => decimal => binary math is why we do this check
-        assert abs(difficulty * 2**31 - 1) < 0.0001
 
 if __name__ == '__main__':
-    BlockchainTest().main()
+    MasternodeActivationTest().main()
