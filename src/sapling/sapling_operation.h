@@ -41,6 +41,7 @@ public:
     explicit SaplingOperation(const Consensus::Params& consensusParams, int chainHeight) : txBuilder(consensusParams, chainHeight) {};
     explicit SaplingOperation(TransactionBuilder& _builder) : txBuilder(_builder) {};
 
+    OperationResult createSendTx(CReserveKey* keyChangeRet = nullptr);
     OperationResult send(std::string& retTxHash);
 
     void setFromAddress(const CTxDestination&);

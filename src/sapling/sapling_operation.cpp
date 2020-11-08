@@ -35,7 +35,7 @@ OperationResult SaplingOperation::checkTxValues(TxValues& txValues, bool isFromt
     return OperationResult(true);
 }
 
-OperationResult SaplingOperation::send(std::string& retTxHash)
+OperationResult SaplingOperation::createSendTx(CReserveKey* keyChangeRet)
 {
 
     bool isFromtAddress = fromAddress.isFromTAddress();
@@ -131,10 +131,9 @@ OperationResult SaplingOperation::send(std::string& retTxHash)
     LogPrint(BCLog::SAPLING, "%s: fee: %s\n", __func__ , FormatMoney(fee));
 
     // Set change address if we are using transparent funds
-    CReserveKey keyChange(pwalletMain);
     if (isFromtAddress) {
         CPubKey vchPubKey;
-        if (!keyChange.GetReservedKey(vchPubKey, true)) {
+        if (keyChangeRet && !keyChangeRet->GetReservedKey(vchPubKey, true)) {
             // should never fail, as we just unlocked
             return errorOut("Could not generate a taddr to use as a change address");
         }
@@ -146,6 +145,13 @@ OperationResult SaplingOperation::send(std::string& retTxHash)
     // Build the transaction
     txBuilder.SetFee(fee);
     finalTx = txBuilder.Build().GetTxOrThrow();
+    return OperationResult(true);
+}
+
+OperationResult SaplingOperation::send(std::string& retTxHash)
+{
+    CReserveKey keyChange(pwalletMain);
+    createSendTx(&keyChange);
 
     if (!testMode) {
         CWalletTx wtx(pwalletMain, finalTx);
