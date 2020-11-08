@@ -175,6 +175,14 @@ void TransactionBuilder::AddTransparentOutput(const CTxDestination& to, CAmount 
     mtx.vout.push_back(out);
 }
 
+void TransactionBuilder::AddDelegationOutput(const CTxOut& out)
+{
+    if (!out.scriptPubKey.IsPayToColdStaking()) {
+        throw std::runtime_error("Invalid delegation recipient, not a P2CS script.");
+    }
+    mtx.vout.emplace_back(out);
+}
+
 void TransactionBuilder::SetFee(CAmount _fee)
 {
     this->fee = _fee;

@@ -40,13 +40,14 @@ OperationResult SaplingOperation::send(std::string& retTxHash)
 
     bool isFromtAddress = fromAddress.isFromTAddress();
     bool isFromShielded = fromAddress.isFromSapAddress();
+    bool isDelegation = (delegationRecipient != nullopt && !delegationRecipient->IsNull());
 
     // It needs to have a from (for now at least)
     if (!isFromtAddress && !isFromShielded) {
         return errorOut("From address parameter missing");
     }
 
-    if (taddrRecipients.empty() && shieldedAddrRecipients.empty()) {
+    if (taddrRecipients.empty() && shieldedAddrRecipients.empty() && !isDelegation) {
         return errorOut("No recipients");
     }
 
@@ -79,6 +80,12 @@ OperationResult SaplingOperation::send(std::string& retTxHash)
     for (SendManyRecipient &t : taddrRecipients) {
         txValues.transOutTotal += t.amount;
         txBuilder.AddTransparentOutput(DecodeDestination(t.address), t.amount);
+    }
+
+    // Add delegation output
+    if (isDelegation) {
+        txValues.transOutTotal += delegationRecipient->nValue;
+        txBuilder.AddDelegationOutput(*delegationRecipient);
     }
 
     // Add shielded outputs

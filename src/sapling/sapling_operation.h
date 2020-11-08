@@ -47,6 +47,7 @@ public:
     void setFromAddress(const libzcash::SaplingPaymentAddress&);
     SaplingOperation* setTransparentRecipients(std::vector<SendManyRecipient>& vec) { taddrRecipients = std::move(vec); return this; };
     SaplingOperation* setShieldedRecipients(std::vector<SendManyRecipient>& vec) { shieldedAddrRecipients = std::move(vec); return this; } ;
+    SaplingOperation* setDelegationRecipient(const CTxOut& out) { delegationRecipient = out; return this; }
     SaplingOperation* setFee(CAmount _fee) { fee = _fee; return this; }
     SaplingOperation* setMinDepth(int _mindepth) { assert(_mindepth >= 0); mindepth = _mindepth; return this; }
     SaplingOperation* setTxBuilder(TransactionBuilder& builder) { txBuilder = builder; return this; }
@@ -63,6 +64,7 @@ private:
     FromAddress fromAddress;
     std::vector<SendManyRecipient> taddrRecipients;
     std::vector<SendManyRecipient> shieldedAddrRecipients;
+    Optional<CTxOut> delegationRecipient;
     std::vector<COutput> transInputs;
     std::vector<SaplingNoteEntry> shieldedInputs;
     int mindepth{5}; // Min default depth 5.

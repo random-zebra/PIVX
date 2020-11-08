@@ -115,6 +115,8 @@ public:
 
     void AddTransparentOutput(const CTxDestination& to, CAmount value);
 
+    void AddDelegationOutput(const CTxOut& out);
+
     void SendChangeTo(libzcash::SaplingPaymentAddress changeAddr, uint256 ovk);
 
     void SendChangeTo(CTxDestination& changeAddr);
