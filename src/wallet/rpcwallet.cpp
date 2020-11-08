@@ -827,11 +827,7 @@ UniValue listshieldedaddresses(const JSONRPCRequest& request)
     libzcash::SaplingIncomingViewingKey ivk;
     libzcash::SaplingExtendedFullViewingKey extfvk;
     for (libzcash::SaplingPaymentAddress addr : addresses) {
-        if (fIncludeWatchonly || (
-                pwalletMain->GetSaplingIncomingViewingKey(addr, ivk) &&
-                pwalletMain->GetSaplingFullViewingKey(ivk, extfvk) &&
-                pwalletMain->HaveSaplingSpendingKey(extfvk)
-        )) {
+        if (fIncludeWatchonly || pwalletMain->HaveSpendingKeyForPaymentAddress(addr)) {
             ret.push_back(KeyIO::EncodePaymentAddress(addr));
         }
     }
@@ -989,8 +985,8 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
 
     // Check that Cold Staking has been enforced or fForceNotEnabled = true
     bool fForceNotEnabled = false;
-    if (params.size() > 5 && !params[5].isNull())
-        fForceNotEnabled = params[5].get_bool();
+    if (params.size() > 6 && !params[6].isNull())
+        fForceNotEnabled = params[6].get_bool();
 
     if (!sporkManager.IsSporkActive(SPORK_17_COLDSTAKING_ENFORCEMENT) && !fForceNotEnabled) {
         std::string errMsg = "Cold Staking disabled with SPORK 17.\n"
@@ -1062,13 +1058,54 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
     // Get P2CS script for addresses
     CScript scriptPubKey = GetScriptForStakeDelegation(*stakeKey, ownerKey);
 
-    // Create the transaction
-    CAmount nFeeRequired;
-    if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, nullptr, ALL_COINS, (CAmount)0, fUseDelegated)) {
-        if (nValue + nFeeRequired > currBalance)
-            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
-        LogPrintf("%s : %s\n", __func__, strError);
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    // Use transparent or shielded funds
+    const bool fUseShielded = (params.size() > 5) && params[5].get_bool();
+
+    if (!fUseShielded) {
+        // Delegate transparent coins
+        CAmount nFeeRequired;
+        if (!pwalletMain->CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, nullptr, ALL_COINS, (CAmount)0, fUseDelegated)) {
+            if (nValue + nFeeRequired > currBalance)
+                strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+            LogPrintf("%s : %s\n", __func__, strError);
+            throw JSONRPCError(RPC_WALLET_ERROR, strError);
+        }
+    } else {
+        // Delegate shielded coins
+        // Check network status
+        int nextBlockHeight = chainActive.Height() + 1;
+        if (!Params().GetConsensus().NetworkUpgradeActive(nextBlockHeight, Consensus::UPGRADE_V5_DUMMY)) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, Sapling has not activated");
+        }
+        // Look for a shielded address with the required balance
+        CAmount nFee = DEFAULT_SAPLING_FEE;
+        Optional<libzcash::SaplingPaymentAddress> fromShieldedAddress;
+        {
+            std::map<libzcash::SaplingPaymentAddress, CAmount> balances;
+            std::vector<SaplingNoteEntry> saplingEntries;
+            pwalletMain->GetSaplingScriptPubKeyMan()->GetFilteredNotes(saplingEntries, {}, 5);
+            for (auto & entry : saplingEntries) {
+                const auto& addr = entry.address;
+                if (!balances.count(addr)) balances.emplace(addr, 0);
+                balances[addr] += CAmount(entry.note.value());
+                if (balances[addr] > nValue + nFee) {
+                    fromShieldedAddress = addr;
+                    break;
+                }
+            }
+        }
+        if (!fromShieldedAddress) {
+            throw JSONRPCError(RPC_WALLET_ERROR, "No shielded address with enough balance");
+        }
+        // Create the transaction
+        TransactionBuilder txBuilder = TransactionBuilder(Params().GetConsensus(), nextBlockHeight, pwalletMain);
+        SaplingOperation operation(txBuilder);
+        operation.setFromAddress(*fromShieldedAddress);
+        CTxOut out = CTxOut(nValue, scriptPubKey);
+        std::string txHash;
+        OperationResult res = operation.setDelegationRecipient(out)->setFee(nFee)->createSendTx();
+        if (!res) throw JSONRPCError(RPC_WALLET_ERROR, res.getError());
+        wtxNew = CWalletTx(pwalletMain, operation.getFinalTx());
     }
 
     UniValue result(UniValue::VOBJ);
@@ -1079,7 +1116,7 @@ UniValue CreateColdStakeDelegation(const UniValue& params, CWalletTx& wtxNew, CR
 
 UniValue delegatestake(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 6)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 7)
         throw std::runtime_error(
             "delegatestake \"stakingaddress\" amount ( \"owneraddress\" fExternalOwner fUseDelegated fForceNotEnabled )\n"
             "\nDelegate an amount to a given address for cold staking. The amount is a real and is rounded to the nearest 0.00000001\n" +
@@ -1093,7 +1130,8 @@ UniValue delegatestake(const JSONRPCRequest& request)
             "4. \"fExternalOwner\"      (boolean, optional, default = false) use the provided 'owneraddress' anyway, even if not present in this wallet.\n"
             "                               WARNING: The owner of the keys to 'owneraddress' will be the only one allowed to spend these coins.\n"
             "5. \"fUseDelegated\"       (boolean, optional, default = false) include already delegated inputs if needed.\n"
-            "6. \"fForceNotEnabled\"    (boolean, optional, default = false) force the creation even if SPORK 17 is disabled (for tests).\n"
+            "6. \"fFromShielded\"       (boolean, optional, default = false) delegate shielded funds.\n"
+            "7. \"fForceNotEnabled\"    (boolean, optional, default = false) force the creation even if SPORK 17 is disabled (for tests).\n"
 
             "\nResult:\n"
             "{\n"
@@ -1123,9 +1161,9 @@ UniValue delegatestake(const JSONRPCRequest& request)
 
 UniValue rawdelegatestake(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 5)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 6)
         throw std::runtime_error(
-            "rawdelegatestake \"stakingaddress\" amount ( \"owneraddress\" fExternalOwner fUseDelegated )\n"
+            "rawdelegatestake \"stakingaddress\" amount ( \"owneraddress\" fExternalOwner fUseDelegated fFromShielded)\n"
             "\nDelegate an amount to a given address for cold staking. The amount is a real and is rounded to the nearest 0.00000001\n"
             "\nDelegate transaction is returned as json object." +
             HelpRequiringPassphrase() + "\n"
@@ -1137,7 +1175,8 @@ UniValue rawdelegatestake(const JSONRPCRequest& request)
             "                               If not provided, or empty string, a new wallet address is generated.\n"
             "4. \"fExternalOwner\"      (boolean, optional, default = false) use the provided 'owneraddress' anyway, even if not present in this wallet.\n"
             "                               WARNING: The owner of the keys to 'owneraddress' will be the only one allowed to spend these coins.\n"
-            "5. \"fUseDelegated         (boolean, optional, default = false) include already delegated inputs if needed."
+            "5. \"fUseDelegated\"       (boolean, optional, default = false) include already delegated inputs if needed.\n"
+            "6. \"fFromShielded\"       (boolean, optional, default = false) delegate shielded funds.\n"
 
             "\nResult:\n"
             "{\n"
