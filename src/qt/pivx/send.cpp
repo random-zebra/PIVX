@@ -692,7 +692,7 @@ void SendWidget::setCoinControlPayAmounts()
     coinControlDialog->clearPayAmounts();
     QMutableListIterator<SendMultiRow*> it(entries);
     while (it.hasNext()) {
-        coinControlDialog->addPayAmount(it.next()->getAmountValue());
+        coinControlDialog->addPayAmount(it.next()->getAmountValue(), !isTransparent);
     }
 }
 
