@@ -482,6 +482,18 @@ CMasternode* CMasternodeMan::Find(const CPubKey& pubKeyMasternode)
     return nullptr;
 }
 
+void CMasternodeMan::CheckSpentCollaterals(const std::vector<CTransactionRef>& vtx)
+{
+    LOCK(cs);
+    for (const auto& tx : vtx) {
+        for (const auto& in : tx->vin) {
+            if (mapMasternodes.count(in.prevout)) {
+                mapMasternodes.at(in.prevout).SetSpent();
+            }
+        }
+    }
+}
+
 //
 // Deterministically select the oldest/best masternode to pay on the network
 //
