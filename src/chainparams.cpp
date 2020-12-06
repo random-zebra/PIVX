@@ -355,8 +355,8 @@ public:
          * a large 4-byte int at any alignment.
          */
 
-        pchMessageStart[0] = 0x45;
-        pchMessageStart[1] = 0x76;
+        pchMessageStart[0] = 0x44;
+        pchMessageStart[1] = 0x73;
         pchMessageStart[2] = 0x65;
         pchMessageStart[3] = 0xba;
         nDefaultPort = 51474;
