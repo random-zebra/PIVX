@@ -697,7 +697,7 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
 
             // Check for stop or if block needs to be rebuilt
             boost::this_thread::interruption_point();
-            if (    (g_connman && g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && Params().MiningRequiresPeers()) || // Regtest mode doesn't require peers
+            if (    //(g_connman && g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && Params().MiningRequiresPeers()) || // Regtest mode doesn't require peers
                     (pblock->nNonce >= 0xffff0000) ||
                     (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60) ||
                     (pindexPrev != chainActive.Tip())
