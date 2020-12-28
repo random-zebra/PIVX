@@ -56,21 +56,9 @@ uint256 CBudgetManager::SubmitFinalBudget()
         return UINT256_ZERO;
     }
 
-     // Submit final budget during the last 2 days (2880 blocks) before payment for Mainnet, about 9 minutes (9 blocks) for Testnet
-    int finalizationWindow = ((nBlocksPerCycle / 30) * 2);
-
-    if (Params().NetworkID() == CBaseChainParams::TESTNET) {
-        // NOTE: 9 blocks for testnet is way to short to have any masternode submit an automatic vote on the finalized(!) budget,
-        //       because those votes are only submitted/relayed once every 56 blocks in CFinalizedBudget::AutoCheck()
-
-        finalizationWindow = 64; // 56 + 4 finalization confirmations + 4 minutes buffer for propagation
-    }
-
-    int nFinalizationStart = nBlockStart - finalizationWindow;
-
-    int nOffsetToStart = nFinalizationStart - nCurrentHeight;
-
-    if (nBlockStart - nCurrentHeight > finalizationWindow) {
+    const int nFinalizationStart = nBlockStart - Params().GetConsensus().nFinalizationWindow;
+    if (nFinalizationStart > nCurrentHeight) {
+        const int nOffsetToStart = nFinalizationStart - nCurrentHeight;
         LogPrint(BCLog::MNBUDGET,"%s: Too early for finalization. Current block is %ld, next Superblock is %ld.\n", __func__, nCurrentHeight, nBlockStart);
         LogPrint(BCLog::MNBUDGET,"%s: First possible block for finalization: %ld. Last possible block for finalization: %ld. "
                 "You have to wait for %ld block(s) until Budget finalization will be possible\n", __func__, nFinalizationStart, nBlockStart, nOffsetToStart);
