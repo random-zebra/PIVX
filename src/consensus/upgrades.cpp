@@ -54,6 +54,10 @@ const struct NUInfo NetworkUpgradeInfo[Consensus::MAX_NETWORK_UPGRADES] = {
                 /*.strInfo =*/ "Sapling Shield - start block v8 - start transaction v3",
         },
         {
+                /*.strName =*/ "v6_dummy",
+                /*.strInfo =*/ "Shield Staking",
+        },
+        {
                 /*.strName =*/ "Test_dummy",
                 /*.strInfo =*/ "Test dummy info",
         },
