@@ -19,7 +19,8 @@ class WalletHDTest(PivxTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 2
-        self.extra_args = [[], ['-keypool=0']]
+        self.extra_args = [['-nuparams=v5_shield:1']] * self.num_nodes
+        self.extra_args[1].append('-keypool=0')
         self.supports_cli = False
 
     def skip_test_if_missing_module(self):
@@ -45,7 +46,16 @@ class WalletHDTest(PivxTestFramework):
 
         # This should be enough to keep the master key and the non-HD key
         self.nodes[1].backupwallet(os.path.join(self.nodes[1].datadir, "hd.bak"))
-        #self.nodes[1].dumpwallet(os.path.join(self.nodes[1].datadir, "hd.dump"))
+
+        # Retrieve the hd seed from the dump
+        self.nodes[1].dumpwallet(os.path.join(self.nodes[1].datadir, "hd.dump"))
+        hdseed = None
+        with open(os.path.join(self.nodes[1].datadir, "hd.dump"), 'r', encoding='utf8') as f:
+            for line in f:
+                if "hdseed=1" in line:
+                    hdseed = line.split(' ')[0]
+                    break
+        assert hdseed is not None
 
         # Derive some HD addresses and remember the last
         # Also send funds to each add
@@ -62,13 +72,25 @@ class WalletHDTest(PivxTestFramework):
         self.nodes[0].sendtoaddress(non_hd_add, 1)
         self.nodes[0].generate(1)
 
+        # Derive some Shield addresses and remember the last
+        # Also send funds to each add
+        z_add = None
+        NUM_SHIELD_ADDS = 10
+        for i in range(NUM_SHIELD_ADDS):
+            z_add = self.nodes[1].getnewshieldaddress()
+            z_info = self.nodes[1].getaddressinfo(z_add)
+            assert_equal(z_info["hdkeypath"], "m/32'/119'/"+str(i+1)+"'")
+            assert_equal(z_info["hdseedid"], masterkeyid)
+            self.nodes[0].sendtoaddress(z_add, 1)
+            self.nodes[0].generate(1)
+
         # create an internal key (again)
         change_addr = self.nodes[1].getrawchangeaddress()
         change_addrV= self.nodes[1].getaddressinfo(change_addr)
         assert_equal(change_addrV["hdkeypath"], "m/44'/119'/0'/1'/1'") #second internal child key
 
         self.sync_all()
-        assert_equal(self.nodes[1].getbalance(), NUM_HD_ADDS + 1)
+        assert_equal(self.nodes[1].getbalance(), NUM_HD_ADDS + NUM_SHIELD_ADDS + 1)
 
         self.log.info("Restore backup ...")
         self.stop_node(1)
@@ -87,13 +109,20 @@ class WalletHDTest(PivxTestFramework):
             assert_equal(hd_info_2["hdkeypath"], "m/44'/119'/0'/0'/"+str(i)+"'")
             assert_equal(hd_info_2["hdseedid"], masterkeyid)
         assert_equal(hd_add, hd_add_2)
+        z_add_2 = None
+        for i in range(NUM_SHIELD_ADDS):
+            z_add_2 = self.nodes[1].getnewshieldaddress()
+            z_info_2 = self.nodes[1].getaddressinfo(z_add_2)
+            assert_equal(z_info_2["hdkeypath"], "m/32'/119'/"+str(i+1)+"'")
+            assert_equal(z_info_2["hdseedid"], masterkeyid)
+        assert_equal(z_add, z_add_2)
         connect_nodes(self.nodes[0], 1)
         self.sync_all()
 
         # Needs rescan
         self.stop_node(1)
         self.start_node(1, extra_args=self.extra_args[1] + ['-rescan'])
-        assert_equal(self.nodes[1].getbalance(), NUM_HD_ADDS + 1)
+        assert_equal(self.nodes[1].getbalance(), NUM_HD_ADDS + NUM_SHIELD_ADDS + 1)
 
         # Try a RPC based rescan
         self.stop_node(1)
@@ -103,7 +132,7 @@ class WalletHDTest(PivxTestFramework):
         self.start_node(1, extra_args=self.extra_args[1])
         connect_nodes(self.nodes[0], 1)
         self.sync_all()
-        # Wallet automatically scans blocks older than key on startup
+        # Wallet automatically scans blocks older than key on startup (but shielded addresses need to be regenerated)
         assert_equal(self.nodes[1].getbalance(), NUM_HD_ADDS + 1)
 
         """ todo: Implement rescanblockchain
@@ -159,6 +188,33 @@ class WalletHDTest(PivxTestFramework):
         assert_raises_rpc_error(-1, "JSON value is not a string as expected", self.nodes[1].sethdseed, False, True)
         assert_raises_rpc_error(-5, "Already have this key", self.nodes[1].sethdseed, False, new_seed)
         assert_raises_rpc_error(-5, "Already have this key", self.nodes[1].sethdseed, False, self.nodes[1].dumpprivkey(self.nodes[1].getnewaddress()))
+
+        # Delete wallet and recover from first seed
+        self.stop_node(1)
+        os.remove(os.path.join(self.nodes[1].datadir, "regtest", "wallet.dat"))
+        self.start_node(1)
+        connect_nodes(self.nodes[0], 1)
+        self.sync_all()
+        # Fund more shield addresses
+        for i in range(NUM_SHIELD_ADDS):
+            z_add_3 = self.nodes[1].getnewshieldaddress()
+            self.nodes[0].sendtoaddress(z_add_3, 1)
+            self.nodes[0].generate(1)
+            self.sync_all()
+        assert_equal(self.nodes[1].getbalance(), NUM_SHIELD_ADDS)
+        self.log.info("Restore from seed ...")
+        self.nodes[1].sethdseed(True, hdseed)
+        # Regenerate old shield addresses
+        for i in range(NUM_SHIELD_ADDS):
+            z_add_2 = self.nodes[1].getnewshieldaddress()
+            z_info_2 = self.nodes[1].getaddressinfo(z_add_2)
+            assert_equal(z_info_2["hdkeypath"], "m/32'/119'/"+str(i+1)+"'")
+            assert_equal(z_info_2["hdseedid"], masterkeyid)
+        assert_equal(z_add, z_add_2)
+        # Restart, zap, and check balance: 1 PIV * (NUM_HD_ADDS + NUM_SHIELD_ADDS) recovered from seed
+        self.stop_node(1)
+        self.start_node(1, extra_args=self.extra_args[1] + ['-zapwallettxes'])
+        assert_equal(self.nodes[1].getbalance(), NUM_HD_ADDS + 2 * NUM_SHIELD_ADDS)
 
 if __name__ == '__main__':
     WalletHDTest().main ()
