@@ -114,7 +114,7 @@ public:
     bool UpdateFinalizedBudget(CFinalizedBudgetVote& vote, CNode* pfrom, std::string& strError);
     TrxValidationStatus IsTransactionValid(const CTransaction& txNew, const uint256& nBlockHash, int nBlockHeight) const;
     std::string GetRequiredPaymentsString(int nBlockHeight);
-    bool FillBlockPayee(CMutableTransaction& txNew, const int nHeight, const Consensus::Params& consensus) const;
+    bool FillBlockPayee(CMutableTransaction& cbaseTx, CMutableTransaction& cstakeTx, const int nHeight, const Consensus::Params& consensus) const;
 
     // Only initialized masternodes: sign and submit votes on valid finalized budgets
     void VoteOnFinalizedBudgets();

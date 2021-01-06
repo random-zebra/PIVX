@@ -650,7 +650,8 @@ public:
     bool CreateCoinStake(const CKeyStore& keystore,
                          const CBlockIndex* pindexPrev,
                          unsigned int nBits,
-                         CMutableTransaction& txNew,
+                         CMutableTransaction& cbaseTx,
+                         CMutableTransaction& cstakeTx,
                          int64_t& nTxNewTime,
                          std::vector<CStakeableOutput>* availableCoins);
     bool MultiSend();

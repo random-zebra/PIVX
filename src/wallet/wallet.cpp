@@ -2909,17 +2909,26 @@ bool CWallet::CreateCoinStake(
         const CKeyStore& keystore,
         const CBlockIndex* pindexPrev,
         unsigned int nBits,
-        CMutableTransaction& txNew,
+        CMutableTransaction& cbaseTx,
+        CMutableTransaction& cstakeTx,
         int64_t& nTxNewTime,
         std::vector<CStakeableOutput>* availableCoins)
 {
 
     const Consensus::Params& consensus = Params().GetConsensus();
 
-    // Mark coin stake transaction
-    txNew.vin.clear();
-    txNew.vout.clear();
-    txNew.vout.emplace_back(0, CScript());
+    // Coinbase Tx
+    cbaseTx.vin.clear();
+    cbaseTx.vout.clear();
+    cbaseTx.vout.emplace_back();
+    cbaseTx.vout[0].SetEmpty();
+    cbaseTx.vin.emplace_back();
+    cbaseTx.vin[0].scriptSig = CScript() << pindexPrev->nHeight + 1 << OP_0;
+
+    // Coinstake Tx
+    cstakeTx.vin.clear();
+    cstakeTx.vout.clear();
+    cstakeTx.vout.emplace_back(0, CScript());
 
     // update staker status (hash)
     pStakerStatus->SetLastTip(pindexPrev);
@@ -2987,41 +2996,41 @@ bool CWallet::CreateCoinStake(
             it++;
             continue;
         }
-        txNew.vout.insert(txNew.vout.end(), vout.begin(), vout.end());
+        cstakeTx.vout.insert(cstakeTx.vout.end(), vout.begin(), vout.end());
 
         // Set output amount
-        int outputs = (int) txNew.vout.size() - 1;
+        int outputs = (int) cstakeTx.vout.size() - 1;
         CAmount nRemaining = nCredit;
         if (outputs > 1) {
             // Split the stake across the outputs
             CAmount nShare = nRemaining / outputs;
             for (int i = 1; i < outputs; i++) {
                 // loop through all but the last one.
-                txNew.vout[i].nValue = nShare;
+                cstakeTx.vout[i].nValue = nShare;
                 nRemaining -= nShare;
             }
         }
         // put the remaining on the last output (which all into the first if only one output)
-        txNew.vout[outputs].nValue += nRemaining;
+        cstakeTx.vout[outputs].nValue += nRemaining;
 
         // Limit size
-        unsigned int nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION);
+        unsigned int nBytes = ::GetSerializeSize(cstakeTx, SER_NETWORK, PROTOCOL_VERSION);
         if (nBytes >= DEFAULT_BLOCK_MAX_SIZE / 5)
             return error("%s : exceeded coinstake size limit", __func__);
 
         // Masternode payment
-        FillBlockPayee(txNew, pindexPrev->nHeight + 1, consensus);
+        FillBlockPayee(cbaseTx, cstakeTx, pindexPrev->nHeight + 1, consensus);
 
-        const uint256& hashTxOut = txNew.GetHash();
+        const uint256& hashTxOut = cstakeTx.GetHash();
         CTxIn in;
         if (!stakeInput.CreateTxIn(this, in, hashTxOut)) {
             LogPrintf("%s : failed to create TxIn\n", __func__);
-            txNew.vin.clear();
-            txNew.vout.clear();
+            cstakeTx.vin.clear();
+            cstakeTx.vout.clear();
             it++;
             continue;
         }
-        txNew.vin.emplace_back(in);
+        cstakeTx.vin.emplace_back(in);
 
         break;
     }
@@ -3032,9 +3041,9 @@ bool CWallet::CreateCoinStake(
 
     // Sign it
     int nIn = 0;
-    for (const CTxIn& txIn : txNew.vin) {
+    for (const CTxIn& txIn : cstakeTx.vin) {
         const CWalletTx *wtx = GetWalletTx(txIn.prevout.hash);
-        if (!SignSignature(*this, *wtx, txNew, nIn++, SIGHASH_ALL, true))
+        if (!SignSignature(*this, *wtx, cstakeTx, nIn++, SIGHASH_ALL, true))
             return error("%s : failed to sign coinstake", __func__);
     }
 

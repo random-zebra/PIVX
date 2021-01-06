@@ -409,7 +409,7 @@ bool CBudgetManager::GetPayeeAndAmount(int chainHeight, CScript& payeeRet, CAmou
     return pfb && pfb->GetPayeeAndAmount(chainHeight, payeeRet, nAmountRet) && pfb->GetVoteCount() > nCountThreshold;
 }
 
-bool CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, const int nHeight, const Consensus::Params& consensus) const
+bool CBudgetManager::FillBlockPayee(CMutableTransaction& cbaseTx, CMutableTransaction& cstakeTx, const int nHeight, const Consensus::Params& consensus) const
 {
     if (nHeight <= 0) return false;
 
@@ -422,20 +422,28 @@ bool CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, const int nHeigh
     CAmount blockValue = GetBlockValue(nHeight);
 
     bool fProofOfStake = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_POS);
+    // masternode/budget payments in coinbaseTx after v6 upgrade
+    bool fPayCoinbase = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_DUMMY);
 
     if (fProofOfStake) {
-        unsigned int i = txNew.vout.size();
-        txNew.vout.resize(i + 1);
-        txNew.vout[i].scriptPubKey = payee;
-        txNew.vout[i].nValue = nAmount;
+        if (fPayCoinbase) {
+            cbaseTx.vout.resize(1);
+            cbaseTx.vout[0].scriptPubKey = payee;
+            cbaseTx.vout[0].nValue = nAmount;
+        } else {
+            unsigned int i = cstakeTx.vout.size();
+            cstakeTx.vout.resize(i + 1);
+            cstakeTx.vout[i].scriptPubKey = payee;
+            cstakeTx.vout[i].nValue = nAmount;
+        }
     } else {
         //miners get the full amount on these blocks
-        txNew.vout[0].nValue = blockValue;
-        txNew.vout.resize(2);
+        cbaseTx.vout[0].nValue = blockValue;
+        cbaseTx.vout.resize(2);
 
         //these are super blocks, so their value can be much larger than normal
-        txNew.vout[1].scriptPubKey = payee;
-        txNew.vout[1].nValue = nAmount;
+        cbaseTx.vout[1].scriptPubKey = payee;
+        cbaseTx.vout[1].nValue = nAmount;
     }
 
     CTxDestination address;

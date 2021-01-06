@@ -291,14 +291,14 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
 }
 
 
-void FillBlockPayee(CMutableTransaction& txNew, const int nHeight, const Consensus::Params& consensus)
+void FillBlockPayee(CMutableTransaction& cbaseTx, CMutableTransaction& cstakeTx, const int nHeight, const Consensus::Params& consensus)
 {
     if (nHeight == 0) return;
 
     if (!sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) ||         // if superblocks are not enabled
-            !g_budgetman.FillBlockPayee(txNew, nHeight, consensus) ) {      // or this is not a superblock,
+            !g_budgetman.FillBlockPayee(cbaseTx, cstakeTx, nHeight, consensus) ) {      // or this is not a superblock,
         // ... or there's no budget with enough votes, then pay a masternode
-        masternodePayments.FillBlockPayee(txNew, nHeight, consensus);
+        masternodePayments.FillBlockPayee(cbaseTx, cstakeTx, nHeight, consensus);
     }
 }
 
@@ -311,7 +311,7 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
     }
 }
 
-void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, const int nHeight, const Consensus::Params& consensus)
+void CMasternodePayments::FillBlockPayee(CMutableTransaction& cbaseTx, CMutableTransaction& cstakeTx, const int nHeight, const Consensus::Params& consensus)
 {
     if (nHeight == 0) return;
 
@@ -331,42 +331,50 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, const int n
     }
 
     bool fProofOfStake = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_POS);
+    // masternode/budget payments in coinbaseTx after v6 upgrade
+    bool fPayCoinbase = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_DUMMY);
 
     if (hasPayment) {
         CAmount masternodePayment = GetMasternodePayment();
         if (fProofOfStake) {
-            /**For Proof Of Stake vout[0] must be null
-             * Stake reward can be split into many different outputs, so we must
-             * use vout.size() to align with several different cases.
-             * An additional output is appended as the masternode payment
-             */
-            unsigned int i = txNew.vout.size();
-            txNew.vout.resize(i + 1);
-            txNew.vout[i].scriptPubKey = payee;
-            txNew.vout[i].nValue = masternodePayment;
+            unsigned int i = cstakeTx.vout.size();
+            if (fPayCoinbase) {
+                cbaseTx.vout.resize(1);
+                cbaseTx.vout[0].scriptPubKey = payee;
+                cbaseTx.vout[0].nValue = masternodePayment;
+            } else {
+                /**For Proof Of Stake vout[0] must be null
+                 * Stake reward can be split into many different outputs, so we must
+                 * use vout.size() to align with several different cases.
+                 * An additional output is appended as the masternode payment
+                 */
+                cstakeTx.vout.resize(i + 1);
+                cstakeTx.vout[i].scriptPubKey = payee;
+                cstakeTx.vout[i].nValue = masternodePayment;
+            }
 
             //subtract mn payment from the stake reward
-            if (!txNew.vout[1].IsZerocoinMint()) {
+            if (!cstakeTx.vout[1].IsZerocoinMint()) {
                 if (i == 2) {
                     // Majority of cases; do it quick and move on
-                    txNew.vout[i - 1].nValue -= masternodePayment;
+                    cstakeTx.vout[i - 1].nValue -= masternodePayment;
                 } else if (i > 2) {
                     // special case, stake is split between (i-1) outputs
                     unsigned int outputs = i-1;
                     CAmount mnPaymentSplit = masternodePayment / outputs;
                     CAmount mnPaymentRemainder = masternodePayment - (mnPaymentSplit * outputs);
                     for (unsigned int j=1; j<=outputs; j++) {
-                        txNew.vout[j].nValue -= mnPaymentSplit;
+                        cstakeTx.vout[j].nValue -= mnPaymentSplit;
                     }
                     // in case it's not an even division, take the last bit of dust from the last one
-                    txNew.vout[outputs].nValue -= mnPaymentRemainder;
+                    cstakeTx.vout[outputs].nValue -= mnPaymentRemainder;
                 }
             }
         } else {
-            txNew.vout.resize(2);
-            txNew.vout[1].scriptPubKey = payee;
-            txNew.vout[1].nValue = masternodePayment;
-            txNew.vout[0].nValue = GetBlockValue(nHeight) - masternodePayment;
+            cbaseTx.vout.resize(2);
+            cbaseTx.vout[1].scriptPubKey = payee;
+            cbaseTx.vout[1].nValue = masternodePayment;
+            cbaseTx.vout[0].nValue = GetBlockValue(nHeight) - masternodePayment;
         }
 
         CTxDestination address1;

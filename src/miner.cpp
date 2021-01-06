@@ -110,7 +110,8 @@ bool CreateCoinbaseTx(CBlock* pblock, const CScript& scriptPubKeyIn, CBlockIndex
     txNew.vout[0].scriptPubKey = scriptPubKeyIn;
 
     //Masternode and general budget payments
-    FillBlockPayee(txNew, pindexPrev ? pindexPrev->nHeight + 1 : 0, Params().GetConsensus());
+    CMutableTransaction dummyTx; // no coinstake on POW blocks
+    FillBlockPayee(txNew, dummyTx, pindexPrev ? pindexPrev->nHeight + 1 : 0, Params().GetConsensus());
 
     txNew.vin[0].scriptSig = CScript() << pindexPrev->nHeight + 1 << OP_0;
     // If no payee was detected, then the whole block value goes to the first output.
@@ -127,23 +128,18 @@ bool SolveProofOfStake(CBlock* pblock, CBlockIndex* pindexPrev, CWallet* pwallet
 {
     boost::this_thread::interruption_point();
     pblock->nBits = GetNextWorkRequired(pindexPrev, pblock);
-    CMutableTransaction txCoinStake;
+    CMutableTransaction txCoinBase, txCoinStake;
     int64_t nTxNewTime = 0;
-    if (!pwallet->CreateCoinStake(*pwallet, pindexPrev, pblock->nBits, txCoinStake, nTxNewTime, availableCoins)) {
+    if (!pwallet->CreateCoinStake(*pwallet, pindexPrev, pblock->nBits, txCoinBase, txCoinStake, nTxNewTime, availableCoins)) {
         LogPrint(BCLog::STAKING, "%s : stake not found\n", __func__);
         return false;
     }
     // Stake found
     pblock->nTime = nTxNewTime;
 
-    CMutableTransaction emptyTx;
-    emptyTx.vout.emplace_back();
-    emptyTx.vout[0].SetEmpty();
-    emptyTx.vin.emplace_back();
-    emptyTx.vin[0].scriptSig = CScript() << pindexPrev->nHeight + 1 << OP_0;
+    // Add coinbase and coinstake transaction refs to the block
     pblock->vtx.emplace_back(
-            std::make_shared<const CTransaction>(emptyTx));
-    // stake
+            std::make_shared<const CTransaction>(txCoinBase));
     pblock->vtx.emplace_back(
             std::make_shared<const CTransaction>(txCoinStake));
     return true;
