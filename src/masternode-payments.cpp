@@ -291,14 +291,14 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
 }
 
 
-void FillBlockPayee(CMutableTransaction& txNew, const int nHeight, bool fProofOfStake)
+void FillBlockPayee(CMutableTransaction& txNew, const int nHeight, const Consensus::Params& consensus)
 {
     if (nHeight == 0) return;
 
-    if (!sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) ||           // if superblocks are not enabled
-            !g_budgetman.FillBlockPayee(txNew, nHeight, fProofOfStake) ) {    // or this is not a superblock,
+    if (!sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS) ||         // if superblocks are not enabled
+            !g_budgetman.FillBlockPayee(txNew, nHeight, consensus) ) {      // or this is not a superblock,
         // ... or there's no budget with enough votes, then pay a masternode
-        masternodePayments.FillBlockPayee(txNew, nHeight, fProofOfStake);
+        masternodePayments.FillBlockPayee(txNew, nHeight, consensus);
     }
 }
 
@@ -311,7 +311,7 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
     }
 }
 
-void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, const int nHeight, bool fProofOfStake)
+void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, const int nHeight, const Consensus::Params& consensus)
 {
     if (nHeight == 0) return;
 
@@ -329,6 +329,8 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, const int n
             hasPayment = false;
         }
     }
+
+    bool fProofOfStake = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_POS);
 
     if (hasPayment) {
         CAmount masternodePayment = GetMasternodePayment();

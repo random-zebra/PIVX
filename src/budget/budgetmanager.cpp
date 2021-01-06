@@ -409,7 +409,7 @@ bool CBudgetManager::GetPayeeAndAmount(int chainHeight, CScript& payeeRet, CAmou
     return pfb && pfb->GetPayeeAndAmount(chainHeight, payeeRet, nAmountRet) && pfb->GetVoteCount() > nCountThreshold;
 }
 
-bool CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, const int nHeight, bool fProofOfStake) const
+bool CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, const int nHeight, const Consensus::Params& consensus) const
 {
     if (nHeight <= 0) return false;
 
@@ -420,6 +420,8 @@ bool CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, const int nHeigh
         return false;
 
     CAmount blockValue = GetBlockValue(nHeight);
+
+    bool fProofOfStake = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_POS);
 
     if (fProofOfStake) {
         unsigned int i = txNew.vout.size();
