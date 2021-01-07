@@ -1111,11 +1111,10 @@ class PivxTier2TestFramework(PivxTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 5
-        self.extra_args = [[],
-                           ["-listen", "-externalip=127.0.0.1"],
-                           [],
-                           ["-listen", "-externalip=127.0.0.1"],
-                           ["-sporkkey=932HEevBSujW2ud7RfB1YF91AFygbBRQj3de3LyaCRqNzKKgWXi"]]
+        self.extra_args = [['-nuparams=v6_dummy:260']] * self.num_nodes
+        self.extra_args[1].append("-externalip=127.0.0.1")
+        self.extra_args[3].append("-externalip=127.0.0.1")
+        self.extra_args[4].append("-sporkkey=932HEevBSujW2ud7RfB1YF91AFygbBRQj3de3LyaCRqNzKKgWXi")
         self.enable_mocktime()
 
         self.ownerOnePos = 0
