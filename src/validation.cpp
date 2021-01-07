@@ -2779,18 +2779,16 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
 
     // Check transactions
     std::vector<CBigNum> vBlockSerials;
-    // TODO: Check if this is ok... blockHeight is always the tip or should we look for the prevHash and get the height?
-    int blockHeight = chainActive.Height() + 1;
     const Consensus::Params& consensus = Params().GetConsensus();
-    bool fSaplingActive = consensus.NetworkUpgradeActive(blockHeight, Consensus::UPGRADE_V5_0);
+    bool fSaplingActive = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V5_0);
     for (const auto& txIn : block.vtx) {
         const CTransaction& tx = *txIn;
         if (!CheckTransaction(
                 tx,
                 fZerocoinActive,
-                blockHeight >= consensus.height_start_ZC_SerialRangeCheck,
+                nHeight >= consensus.height_start_ZC_SerialRangeCheck,
                 state,
-                isBlockBetweenFakeSerialAttackRange(blockHeight),
+                isBlockBetweenFakeSerialAttackRange(nHeight),
                 fColdStakingActive,
                 fSaplingActive
         ))
