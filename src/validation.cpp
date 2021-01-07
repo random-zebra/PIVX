@@ -2721,10 +2721,6 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
 
     if (IsPoS) {
-        // Coinbase output should be empty if proof-of-stake block
-        if (block.vtx[0]->vout.size() != 1 || !block.vtx[0]->vout[0].IsEmpty())
-            return state.DoS(100, false, REJECT_INVALID, "bad-cb-pos", false, "coinbase output not empty for proof-of-stake block");
-
         // Second transaction must be coinstake, the rest must not be
         if (block.vtx.empty() || !block.vtx[1]->IsCoinStake())
             return state.DoS(100, false, REJECT_INVALID, "bad-cs-missing", false, "second tx is not coinstake");
@@ -2739,6 +2735,8 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     // Zerocoin activation
     bool fZerocoinActive = block.GetBlockTime() > Params().GetConsensus().ZC_TimeStart;
 
+    const Consensus::Params& consensus = Params().GetConsensus();
+
     // masternode payments / budgets
     CBlockIndex* pindexPrev = chainActive.Tip();
     int nHeight = 0;
@@ -2751,7 +2749,14 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                 nHeight = (*mi).second->nHeight + 1;
         }
 
-        // PIVX
+        // pos: masternodes/budgets start being paid in the coinbase tx from v6
+        bool fEmptyPoSCoinbase = !consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_DUMMY);
+        if (IsPoS && fEmptyPoSCoinbase) {
+            // Coinbase output should be empty if proof-of-stake block
+            if (block.vtx[0]->vout.size() != 1 || !block.vtx[0]->vout[0].IsEmpty())
+                return state.DoS(100, false, REJECT_INVALID, "bad-cb-pos", false, "coinbase output not empty for pre-v6 PoS block");
+        }
+
         // It is entierly possible that we don't have enough data and this could fail
         // (i.e. the block could indeed be valid). Store the block for later consideration
         // but issue an initial reject message.
@@ -2779,7 +2784,6 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
 
     // Check transactions
     std::vector<CBigNum> vBlockSerials;
-    const Consensus::Params& consensus = Params().GetConsensus();
     bool fSaplingActive = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V5_0);
     for (const auto& txIn : block.vtx) {
         const CTransaction& tx = *txIn;
