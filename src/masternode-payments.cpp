@@ -254,7 +254,8 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
     }
 
     const bool isPoSActive = Params().GetConsensus().NetworkUpgradeActive(nBlockHeight, Consensus::UPGRADE_POS);
-    const CTransaction& txNew = *(isPoSActive ? block.vtx[1] : block.vtx[0]);
+    const bool checkCoinbaseTx = !isPoSActive || Params().GetConsensus().NetworkUpgradeActive(nBlockHeight, Consensus::UPGRADE_V6_DUMMY);
+    const CTransaction& txNew = *(checkCoinbaseTx ? block.vtx[0] : block.vtx[1]);
 
     //check if it's a budget block
     if (sporkManager.IsSporkActive(SPORK_13_ENABLE_SUPERBLOCKS)) {
