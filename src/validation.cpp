@@ -2616,13 +2616,24 @@ bool FindUndoPos(CValidationState& state, int nFile, CDiskBlockPos& pos, unsigne
     return true;
 }
 
-bool CheckColdStakeFreeOutput(const CTransaction& tx, const int nHeight)
+static bool CheckColdStakeFreeOutput(const CTransaction& tx, const int nHeight, bool fIBD, bool fV6Active)
 {
     if (!tx.HasP2CSOutputs())
         return true;
 
     const unsigned int outs = tx.vout.size();
     const CTxOut& lastOut = tx.vout[outs-1];
+
+    // After v6 masternode/budget payments are in the coinbase. So there is no "free" output
+    if (fV6Active) {
+        return (outs < 3 || lastOut.scriptPubKey == tx.vout[outs-2].scriptPubKey);
+    } else {
+        // Before v6 we need tier-two data to validate
+        if (fIBD) return true;
+    }
+
+    // Here only if v6 is not active and we are not in initial block download.
+    // !TODO: remove after v6 enforcement has passed
     if (outs >=3 && lastOut.scriptPubKey != tx.vout[outs-2].scriptPubKey) {
         if (lastOut.nValue == GetMasternodePayment())
             return true;
@@ -2757,17 +2768,18 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                 return state.DoS(100, false, REJECT_INVALID, "bad-cb-pos", false, "coinbase output not empty for pre-v6 PoS block");
         }
 
+        // Last output of Cold-Stake is not abused
+        if (IsPoS && !CheckColdStakeFreeOutput(*(block.vtx[1]), nHeight, IsInitialBlockDownload(), !fEmptyPoSCoinbase)) {
+            mapRejectedBlocks.emplace(block.GetHash(), GetTime());
+            return state.DoS(0, false, REJECT_INVALID, "bad-p2cs-outs", false, "invalid cold-stake output");
+        }
+
         // It is entierly possible that we don't have enough data and this could fail
         // (i.e. the block could indeed be valid). Store the block for later consideration
         // but issue an initial reject message.
         // The case also exists that the sending peer could not have enough data to see
         // that this block is invalid, so don't issue an outright ban.
         if (nHeight != 0 && !IsInitialBlockDownload()) {
-            // Last output of Cold-Stake is not abused
-            if (IsPoS && !CheckColdStakeFreeOutput(*(block.vtx[1]), nHeight)) {
-                mapRejectedBlocks.emplace(block.GetHash(), GetTime());
-                return state.DoS(0, false, REJECT_INVALID, "bad-p2cs-outs", false, "invalid cold-stake output");
-            }
 
             // set Cold Staking Spork
             fColdStakingActive = !sporkManager.IsSporkActive(SPORK_19_COLDSTAKING_MAINTENANCE);
