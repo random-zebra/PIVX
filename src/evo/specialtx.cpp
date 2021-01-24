@@ -10,11 +10,14 @@
 #include "chainparams.h"
 #include "clientversion.h"
 #include "consensus/validation.h"
+#include "evo/providertx.h"
+#include "primitives/transaction.h"
 #include "primitives/block.h"
 
 bool CheckSpecialTx(const CTransaction& tx, CValidationState& state, bool fIsSaplingActive)
 {
     bool hasExtraPayload = tx.hasExtraPayload();
+    bool isNormalType = tx.IsNormalType();
 
     // Before Sapling activation, the tx has a single 32bit version and no type.
     // Versions > 1 are not standard, but still accepted. No TX can have extra payload.
@@ -24,11 +27,11 @@ bool CheckSpecialTx(const CTransaction& tx, CValidationState& state, bool fIsSap
 
     // After Sapling activation.
     // v1/v2 can only be Type=0
-    if (!tx.isSaplingVersion() && tx.nType != CTransaction::TxType::NORMAL) {
+    if (!tx.isSaplingVersion() && !isNormalType) {
         return state.DoS(100, error("%s: Type %d not supported with version %d", __func__, tx.nType, tx.nVersion),
                          REJECT_INVALID, "bad-txns-type-version");
     }
-    if (tx.nType == CTransaction::TxType::NORMAL) {
+    if (isNormalType) {
         // Type-0 txes don't have extra payload
         if (hasExtraPayload) {
             return state.DoS(100, error("%s: Type 0 doesn't support extra payload", __func__),
@@ -53,7 +56,8 @@ bool CheckSpecialTx(const CTransaction& tx, CValidationState& state, bool fIsSap
     }
 
     switch (tx.nType) {
-    /* per-tx-type checking */
+        case CTransaction::TxType::PROREG:
+            return CheckProRegTx(tx, state);
     }
 
     return state.DoS(10, error("%s : special tx %s with invalid type %d",
@@ -72,3 +76,11 @@ bool UndoSpecialTxsInBlock(const CBlock& block, const CBlockIndex* pindexPrev)
     return true;
 }
 
+uint256 CalcTxInputsHash(const CTransaction& tx)
+{
+    CHashWriter hw(CLIENT_VERSION, SER_GETHASH);
+    for (const auto& in : tx.vin) {
+        hw << in.prevout;
+    }
+    return hw.GetHash();
+}
