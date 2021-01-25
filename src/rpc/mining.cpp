@@ -3,10 +3,10 @@
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2020 The PIVX developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include "amount.h"
-#include "base58.h"
+#include "blockassembler.h"
 #include "chainparams.h"
 #include "core_io.h"
 #include "init.h"
@@ -79,9 +79,9 @@ UniValue generate(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "No available coins to stake");
         }
 
-        std::unique_ptr<CBlockTemplate> pblocktemplate(fPoS ?
-                                                       CreateNewBlock(CScript(), pwalletMain, true, &availableCoins) :
-                                                       CreateNewBlockWithKey(reservekey, pwalletMain));
+        std::unique_ptr<CBlockTemplate> pblocktemplate((fPoS ?
+                                                        BlockAssembler(Params(), DEFAULT_PRINTPRIORITY).CreateNewBlock(CScript(), pwalletMain, true, &availableCoins) :
+                                                        CreateNewBlockWithKey(reservekey, pwalletMain)));
         if (!pblocktemplate.get()) break;
         std::shared_ptr<CBlock> pblock = std::make_shared<CBlock>(pblocktemplate->block);
 
@@ -91,7 +91,7 @@ UniValue generate(const JSONRPCRequest& request)
                 IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
             }
             while (pblock->nNonce < std::numeric_limits<uint32_t>::max() &&
-                   !CheckProofOfWork(pblock->GetHash(), pblock->nBits)) {
+                    !CheckProofOfWork(pblock->GetHash(), pblock->nBits)) {
                 ++pblock->nNonce;
             }
             if (ShutdownRequested()) break;
@@ -540,7 +540,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     // Update block
     static CBlockIndex* pindexPrev;
     static int64_t nStart;
-    static CBlockTemplate* pblocktemplate;
+    static std::unique_ptr<CBlockTemplate> pblocktemplate;
     if (pindexPrev != chainActive.Tip() ||
         (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 5)) {
         // Clear pindexPrev so future calls make a new block, despite any failures from here on
@@ -553,11 +553,11 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
 
         // Create new block
         if (pblocktemplate) {
-            delete pblocktemplate;
+            pblocktemplate.release();
             pblocktemplate = NULL;
         }
         CScript scriptDummy = CScript() << OP_TRUE;
-        pblocktemplate = CreateNewBlock(scriptDummy, pwalletMain, false);
+        pblocktemplate = BlockAssembler(Params(), DEFAULT_PRINTPRIORITY).CreateNewBlock(scriptDummy, pwalletMain, false);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
@@ -567,7 +567,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
     // Update nTime
-    UpdateTime(pblock, pindexPrev);
+    UpdateTime(pblock, Params().GetConsensus(), pindexPrev);
     pblock->nNonce = 0;
 
     UniValue aCaps(UniValue::VARR); aCaps.push_back("proposal");
