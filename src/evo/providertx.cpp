@@ -124,7 +124,7 @@ bool CheckProRegTx(const CTransaction& tx, CValidationState& state)
 
     if (!pl.collateralOutpoint.hash.IsNull()) {
         Coin coin;
-        if (!pcoinsTip->GetCoin(pl.collateralOutpoint, coin) || coin.IsSpent() || coin.out.nValue != MN_COLL_AMT) {
+        if (!GetUTXOCoin(pl.collateralOutpoint, coin) || coin.out.nValue != MN_COLL_AMT) {
             return state.DoS(10, false, REJECT_INVALID, "bad-protx-collateral");
         }
 
