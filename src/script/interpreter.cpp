@@ -1086,6 +1086,9 @@ public:
              SerializeOutput(s, nOutput);
         // Serialize nLockTime
         ::Serialize(s, txTo.nLockTime);
+        // Serialize extra payload
+        if (txTo.IsSpecialTx())
+            ::Serialize(s, *txTo.extraPayload);
     }
 };
 
