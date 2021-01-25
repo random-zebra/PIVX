@@ -271,6 +271,13 @@ bool ValidOutPoint(const COutPoint& out, int nHeight);
  */
 bool CheckFinalTx(const CTransactionRef& tx, int flags = -1);
 
+/*
+ * Retrieve an unspent coin in pcoinsTip. Lock cs_main.
+ */
+bool GetUTXOCoin(const COutPoint& outpoint, Coin& coin);
+Optional<int> GetUTXOHeight(const COutPoint& outpoint);
+Optional<int> GetUTXOConfirmations(const COutPoint& outpoint);
+
 /**
  * Closure representing one script verification
  * Note that this stores references to the spending transaction

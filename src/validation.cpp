@@ -247,6 +247,35 @@ bool CheckFinalTx(const CTransactionRef& tx, int flags)
     return IsFinalTx(tx, nBlockHeight, nBlockTime);
 }
 
+bool GetUTXOCoin(const COutPoint& outpoint, Coin& coin)
+{
+    LOCK(cs_main);
+    if (!pcoinsTip->GetCoin(outpoint, coin))
+        return false;
+    if (coin.IsSpent())
+        return false;
+    return true;
+}
+
+Optional<int> GetUTXOHeight(const COutPoint& outpoint)
+{
+    // nullopt means UTXO is yet unknown or already spent
+    Coin coin;
+    return GetUTXOCoin(outpoint, coin) ? Optional<int>(coin.nHeight) : nullopt;
+}
+
+Optional<int> GetUTXOConfirmations(const COutPoint& outpoint)
+{
+    // nullopt means UTXO is yet unknown or already spent
+    Optional<int> nPrevoutHeight = GetUTXOHeight(outpoint);
+    if (nPrevoutHeight == nullopt || *nPrevoutHeight < 0)
+        return nullopt;
+    int nChainHeight(WITH_LOCK(cs_main, return chainActive.Height(); ));
+    if (nChainHeight < 0 || *nPrevoutHeight > nChainHeight)
+        return nullopt;
+    return Optional<int>(nChainHeight - *nPrevoutHeight + 1);
+}
+
 void LimitMempoolSize(CTxMemPool& pool, size_t limit, unsigned long age) {
     int expired = pool.Expire(GetTime() - age);
     if (expired != 0)
