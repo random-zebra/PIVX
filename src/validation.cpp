@@ -22,6 +22,7 @@
 #include "consensus/tx_verify.h"
 #include "consensus/validation.h"
 #include "consensus/zerocoin_verify.h"
+#include "evo/deterministicmns.h"
 #include "fs.h"
 #include "guiinterface.h"
 #include "init.h"
