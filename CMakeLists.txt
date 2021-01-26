@@ -25,8 +25,8 @@ project(PIVX)
 
 set(BDB_VER "4.8.30")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/contrib/cmake")
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 ")
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++14 ")
 include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -176,6 +176,8 @@ file(GLOB CONSENSUS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/consensus/*.h)
 file(GLOB CTAES_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/crypto/ctaes/*.h)
 file(GLOB ZRUST_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/include/*.h)
 file(GLOB SAPLING_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/sapling/*.h)
+file(GLOB IMMER_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/immer/*.h)
+file(GLOB EVO_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/evo/*.h)
 
 source_group("BitcoinHeaders" FILES
         ${HEADERS}
@@ -189,6 +191,8 @@ source_group("BitcoinHeaders" FILES
         ${CTAES_HEADERS}
         ${ZRUST_HEADERS}
         ${SAPLING_HEADERS}
+        ${IMMER_HEADERS}
+        ${EVO_HEADERS}
         ./src/support/cleanse.h
         )
 
@@ -199,6 +203,7 @@ set(SERVER_SOURCES
         ./src/blocksignature.cpp
         ./src/chain.cpp
         ./src/checkpoints.cpp
+        ./src/consensus/tx_verify.cpp
         ./src/httprpc.cpp
         ./src/httpserver.cpp
         ./src/indirectmap.h
@@ -231,9 +236,9 @@ set(SERVER_SOURCES
         ./src/timedata.cpp
         ./src/torcontrol.cpp
         ./src/sapling/sapling_txdb.cpp
+        ./src/sapling/sapling_validation.cpp
         ./src/txdb.cpp
         ./src/txmempool.cpp
-        ./src/sapling/sapling_validation.cpp
         ./src/validation.cpp
         ./src/validationinterface.cpp
         ./src/zpivchain.cpp
@@ -385,7 +390,6 @@ set(COMMON_SOURCES
         ./src/compressor.cpp
         ./src/tiertwo/specialtx_validation.cpp
         ./src/consensus/merkle.cpp
-        ./src/consensus/tx_verify.cpp
         ./src/consensus/zerocoin_verify.cpp
         ./src/primitives/block.cpp
         ./src/primitives/transaction.cpp
