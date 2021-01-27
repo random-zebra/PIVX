@@ -14,18 +14,11 @@
 #include "primitives/transaction.h"
 #include "primitives/block.h"
 
-bool CheckSpecialTx(const CTransaction& tx, CValidationState& state, bool fIsSaplingActive)
+bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
 {
     bool hasExtraPayload = tx.hasExtraPayload();
     bool isNormalType = tx.IsNormalType();
 
-    // Before Sapling activation, the tx has a single 32bit version and no type.
-    // Versions > 1 are not standard, but still accepted. No TX can have extra payload.
-    if (!fIsSaplingActive) {
-        return !hasExtraPayload;
-    }
-
-    // After Sapling activation.
     // v1/v2 can only be Type=0
     if (!tx.isSaplingVersion() && !isNormalType) {
         return state.DoS(100, error("%s: Type %d not supported with version %d", __func__, tx.nType, tx.nVersion),

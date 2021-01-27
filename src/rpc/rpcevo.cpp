@@ -263,7 +263,7 @@ static std::string SignAndSendSpecialTx(CMutableTransaction& tx, const ProRegPL&
     SetTxPayload(tx, pl);
 
     CValidationState state;
-    if (!CheckSpecialTx(tx, state, true)) {
+    if (!CheckSpecialTx(tx, state)) {
         throw std::runtime_error(FormatStateMessage(state));
     }
 
