@@ -589,12 +589,15 @@ public:
     CDeterministicMNList GetListForBlock(const CBlockIndex* pindex);
     CDeterministicMNList GetListAtChainTip();
 
-    // Whether DMNs are enabled at a certain height, or at the chain-tip
-    bool IsDIP3Enforced(int nHeight) const;
+    // Whether DMNs are enabled at the current chain-tip height
     bool IsDIP3Enforced() const;
+    // Whether legacy MN is obsolete at the current chain-tip height
+    bool LegacyMNObsolete() const;
 
 private:
     void CleanupCache(int nHeight);
+    bool IsDIP3Enforced(int nHeight) const;
+    bool LegacyMNObsolete(int nHeight) const;
 };
 
 extern std::unique_ptr<CDeterministicMNManager> deterministicMNManager;

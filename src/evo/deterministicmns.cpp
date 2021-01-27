@@ -12,6 +12,7 @@
 #include "guiinterface.h"
 #include "masternode.h" // for MN_COLL_AMT, MasternodeCollateralMinConf
 #include "script/standard.h"
+#include "spork.h"
 #include "sync.h"
 #include "validation.h"
 #include "validationinterface.h"
@@ -832,6 +833,17 @@ bool CDeterministicMNManager::IsDIP3Enforced() const
 {
     int tipHeight = WITH_LOCK(cs, return tipIndex ? tipIndex->nHeight : -1;);
     return IsDIP3Enforced(tipHeight);
+}
+
+bool CDeterministicMNManager::LegacyMNObsolete(int nHeight) const
+{
+    return nHeight > sporkManager.GetSporkValue(SPORK_21_LEGACY_MNS_MAX_HEIGHT);
+}
+
+bool CDeterministicMNManager::LegacyMNObsolete() const
+{
+    int tipHeight = WITH_LOCK(cs, return tipIndex ? tipIndex->nHeight : -1;);
+    return LegacyMNObsolete(tipHeight);
 }
 
 void CDeterministicMNManager::CleanupCache(int nHeight)
