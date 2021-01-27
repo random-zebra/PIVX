@@ -86,7 +86,7 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
     }
 
     // Dispatch to SpecialTx validator
-    if (!CheckSpecialTx(tx, state, fSaplingActive)) {
+    if (!CheckSpecialTx(tx, state)) {
         return false;
     }
 
