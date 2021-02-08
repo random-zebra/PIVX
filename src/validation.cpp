@@ -23,6 +23,7 @@
 #include "consensus/validation.h"
 #include "consensus/zerocoin_verify.h"
 #include "evo/deterministicmns.h"
+#include "evo/specialtx.h"
 #include "fs.h"
 #include "guiinterface.h"
 #include "init.h"
@@ -1289,6 +1290,10 @@ DisconnectResult DisconnectBlock(CBlock& block, const CBlockIndex* pindex, CCoin
         return DISCONNECT_FAILED;
     }
 
+    if (!UndoSpecialTxsInBlock(block, pindex)) {
+        return DISCONNECT_FAILED;
+    }
+
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
         const CTransaction& tx = *block.vtx[i];
@@ -1397,8 +1402,8 @@ void ThreadScriptCheck()
 
 static int64_t nTimeVerify = 0;
 static int64_t nTimeConnect = 0;
+static int64_t nTimeProcessSpecial = 0;
 static int64_t nTimeIndex = 0;
-static int64_t nTimeCallbacks = 0;
 static int64_t nTimeTotal = 0;
 
 /** Apply the effects of this block (with given index) on the UTXO set represented by coins.
@@ -1681,6 +1686,15 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
     nTimeVerify += nTime2 - nTimeStart;
     LogPrint(BCLog::BENCH, "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime2 - nTimeStart), nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs - 1), nTimeVerify * 0.000001);
 
+    if (!ProcessSpecialTxsInBlock(block, pindex, state, fJustCheck)) {
+        return error("%s: Special tx processing failed for block %s with %s",
+                     __func__, pindex->GetBlockHash().ToString(), FormatStateMessage(state));
+    }
+    int64_t nTime3 = GetTimeMicros();
+    nTimeProcessSpecial += nTime3 - nTime2;
+    LogPrint(BCLog::BENCH, "    - Process special tx: %.2fms [%.2fs]\n", 0.001 * (nTime3 - nTime2), nTimeProcessSpecial * 0.000001);
+
+
     //IMPORTANT NOTE: Nothing before this point should actually store to disk (or even memory)
     if (fJustCheck)
         return true;
@@ -1716,13 +1730,9 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
-    int64_t nTime3 = GetTimeMicros();
-    nTimeIndex += nTime3 - nTime2;
-    LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime3 - nTime2), nTimeIndex * 0.000001);
-
     int64_t nTime4 = GetTimeMicros();
-    nTimeCallbacks += nTime4 - nTime3;
-    LogPrint(BCLog::BENCH, "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime4 - nTime3), nTimeCallbacks * 0.000001);
+    nTimeIndex += nTime4 - nTime3;
+    LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime4 - nTime3), nTimeIndex * 0.000001);
 
     if (consensus.NetworkUpgradeActive(pindex->nHeight, Consensus::UPGRADE_ZC_V2) &&
             pindex->nHeight < consensus.height_last_ZC_AccumCheckpoint) {
@@ -2324,6 +2334,9 @@ bool ActivateBestChain(CValidationState& state, std::shared_ptr<const CBlock> pb
 
         // Notify external listeners about the new tip.
         GetMainSignals().UpdatedBlockTip(pindexNewTip, pindexFork, fInitialDownload);
+
+        // TODO: move to notification interface
+        deterministicMNManager->UpdatedBlockTip(pindexNewTip);
 
         // Always notify the UI if a new block tip was connected
         if (pindexFork != pindexNewTip) {
