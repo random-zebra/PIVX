@@ -17,6 +17,7 @@ bool isBlockBetweenFakeSerialAttackRange(int nHeight);
 bool CheckPublicCoinSpendEnforced(int blockHeight, bool isPublicSpend);
 int CurrentPublicCoinSpendVersion();
 bool CheckPublicCoinSpendVersion(int version);
+bool ContextualCheckZerocoinTx(const CTransactionRef& tx, CValidationState& state, const Consensus::Params& consensus, int nHeight);
 bool ContextualCheckZerocoinSpend(const CTransaction& tx, const libzerocoin::CoinSpend* spend, int nHeight, const uint256& hashBlock);
 bool ContextualCheckZerocoinSpendNoSerialCheck(const CTransaction& tx, const libzerocoin::CoinSpend* spend, int nHeight, const uint256& hashBlock);
 
