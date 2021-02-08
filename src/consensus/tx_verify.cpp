@@ -169,3 +169,18 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, CValidationS
 
     return true;
 }
+
+bool ContextualCheckTransaction(const CTransactionRef& tx, CValidationState& state, const CChainParams& chainparams, int nHeight, bool fIBD)
+{
+    // Dispatch to Sapling validator
+    if (!SaplingValidation::ContextualCheckTransaction(*tx, state, chainparams, nHeight, true, fIBD)) {
+        return false; // Failure reason has been set in validation state object
+    }
+
+    // Dispatch to SpecialTx validator
+    if (!ContextualCheckSpecialTransaction(tx, state, chainparams.GetConsensus(), nHeight)) {
+        return false; // Failure reason has been set in validation state object
+    }
+
+    return true;
+}
