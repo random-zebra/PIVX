@@ -432,6 +432,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
     if (!SaplingValidation::ContextualCheckTransaction(tx, state, params, nextBlockHeight, false, IsInitialBlockDownload())) {
         return error("AcceptToMemoryPool: ContextualCheckTransaction failed");
     }
+    if (!ContextualCheckSpecialTransaction(_tx, state, consensus, nextBlockHeight)) {
+        return false; // Failure reason has been set in validation state object
+    }
 
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
@@ -3035,6 +3038,10 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
 
         // Sapling: Check transaction contextually against consensus rules at block height
         if (!SaplingValidation::ContextualCheckTransaction(*tx, state, chainparams, nHeight, true, IsInitialBlockDownload())) {
+            return false; // Failure reason has been set in validation state object
+        }
+
+        if (!ContextualCheckSpecialTransaction(tx, state, chainparams.GetConsensus(), nHeight)) {
             return false; // Failure reason has been set in validation state object
         }
 

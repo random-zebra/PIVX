@@ -6,6 +6,7 @@
 #ifndef PIVX_SPECIALTX_H
 #define PIVX_SPECIALTX_H
 
+#include "consensus/params.h"
 #include "streams.h"
 #include "version.h"
 #include "primitives/transaction.h"
@@ -22,6 +23,9 @@ static const unsigned int MAX_SPECIALTX_EXTRAPAYLOAD = 10000;
 // Note: for +v2, if the tx is not a special tx, this method returns true.
 // Note2: This function only performs extra payload related checks, it does NOT checks regular inputs and outputs.
 bool CheckSpecialTx(const CTransaction& tx, CValidationState& state);
+
+/** Context-dependent checks */
+bool ContextualCheckSpecialTransaction(const CTransactionRef& tx, CValidationState& state, const Consensus::Params& consensus, int nHeight);
 
 // Update internal tiertwo data when blocks containing special txes get connected/disconnected
 bool ProcessSpecialTxsInBlock(const CBlock& block, const CBlockIndex* pindex, CValidationState& state, bool fJustCheck);
