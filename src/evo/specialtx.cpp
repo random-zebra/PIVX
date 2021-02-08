@@ -10,6 +10,7 @@
 #include "chainparams.h"
 #include "clientversion.h"
 #include "consensus/validation.h"
+#include "evo/deterministicmns.h"
 #include "evo/providertx.h"
 #include "primitives/transaction.h"
 #include "primitives/block.h"
@@ -36,6 +37,12 @@ bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
 
     // --- From here on, tx has nVersion>=2 and nType!=0
 
+    // Cannot be coinbase/coinstake tx
+    if (tx.IsCoinBase() || tx.IsCoinStake()) {
+        return state.DoS(10, error("%s: Special tx is coinbase or coinstake", __func__),
+                         REJECT_INVALID, "bad-txns-special-coinbase");
+    }
+
     // Special txes must have a non-empty payload
     if (!hasExtraPayload) {
         return state.DoS(100, error("%s: Special tx (type=%d) without extra payload", __func__, tx.nType),
@@ -57,15 +64,22 @@ bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
             __func__, tx.GetHash().ToString(), tx.nType), REJECT_INVALID, "bad-tx-type");
 }
 
-bool ProcessSpecialTxsInBlock(const CBlock& block, const CBlockIndex* pindexPrev, CValidationState& state)
+bool ProcessSpecialTxsInBlock(const CBlock& block, const CBlockIndex* pindex, CValidationState& state, bool fJustCheck)
 {
-    /* process special txes in batches */
+    // !TODO: ProcessBlock llmq quorum block processor
+    if (!deterministicMNManager->ProcessBlock(block, pindex, state, fJustCheck)) {
+        // pass the state returned by the function above
+        return false;
+    }
     return true;
 }
 
-bool UndoSpecialTxsInBlock(const CBlock& block, const CBlockIndex* pindexPrev)
+bool UndoSpecialTxsInBlock(const CBlock& block, const CBlockIndex* pindex)
 {
-    /* undo special txes in batches */
+    if (!deterministicMNManager->UndoBlock(block, pindex)) {
+        return false;
+    }
+    // !TODO: UndoBlock llmq quorum block processor
     return true;
 }
 
