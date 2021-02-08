@@ -169,6 +169,8 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
     auto utxos = BuildSimpleUtxoMap(coinbaseTxns);
 
     int nHeight = chainActive.Height();
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V6_0, nHeight);
+
     int port = 1;
 
     // these maps are only populated, but not used for now. They will be needed later on, in the next commits.
@@ -208,6 +210,7 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
 
         nHeight++;
     }
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V6_0, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

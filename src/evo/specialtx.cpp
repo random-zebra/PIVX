@@ -15,6 +15,15 @@
 #include "primitives/transaction.h"
 #include "primitives/block.h"
 
+bool ContextualCheckSpecialTransaction(const CTransactionRef& tx, CValidationState& state, const Consensus::Params& consensus, int nHeight)
+{
+    if (tx->IsSpecialTx() && !consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_0)) {
+        return state.DoS(100, error("%s: Special tx when EVO upgrade not enforced yet", __func__),
+                         REJECT_INVALID, "bad-txns-evo-not-active");
+    }
+    return true;
+}
+
 bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
 {
     bool hasExtraPayload = tx.hasExtraPayload();

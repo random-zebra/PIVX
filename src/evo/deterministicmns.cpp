@@ -503,7 +503,10 @@ CDeterministicMNManager::CDeterministicMNManager(CEvoDB& _evoDb) :
 bool CDeterministicMNManager::ProcessBlock(const CBlock& block, const CBlockIndex* pindex, CValidationState& _state, bool fJustCheck)
 {
     int nHeight = pindex->nHeight;
-    // !TODO: exit early if enforcement not active
+    if (!Params().GetConsensus().NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_0)) {
+        // nothing to do
+        return true;
+    }
 
     CDeterministicMNList oldList, newList;
     CDeterministicMNListDiff diff;
@@ -558,8 +561,12 @@ bool CDeterministicMNManager::ProcessBlock(const CBlock& block, const CBlockInde
 
 bool CDeterministicMNManager::UndoBlock(const CBlock& block, const CBlockIndex* pindex)
 {
-    // !TODO: exit early if enforcement not active
-    uint256 blockHash = block.GetHash();
+    if (!Params().GetConsensus().NetworkUpgradeActive(pindex->nHeight, Consensus::UPGRADE_V6_0)) {
+        // nothing to do
+        return true;
+    }
+
+    const uint256& blockHash = block.GetHash();
 
     CDeterministicMNList curList;
     CDeterministicMNList prevList;
