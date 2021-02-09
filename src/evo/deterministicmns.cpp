@@ -819,6 +819,17 @@ CDeterministicMNList CDeterministicMNManager::GetListAtChainTip()
     return GetListForBlock(tipIndex);
 }
 
+bool CDeterministicMNManager::IsDIP3Enforced(int nHeight) const
+{
+    return Params().GetConsensus().NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_0);
+}
+
+bool CDeterministicMNManager::IsDIP3Enforced() const
+{
+    int tipHeight = WITH_LOCK(cs, return tipIndex ? tipIndex->nHeight : -1;);
+    return IsDIP3Enforced(tipHeight);
+}
+
 void CDeterministicMNManager::CleanupCache(int nHeight)
 {
     AssertLockHeld(cs);
