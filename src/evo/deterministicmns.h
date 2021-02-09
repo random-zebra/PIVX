@@ -589,6 +589,10 @@ public:
     CDeterministicMNList GetListForBlock(const CBlockIndex* pindex);
     CDeterministicMNList GetListAtChainTip();
 
+    // Whether DMNs are enabled at a certain height, or at the chain-tip
+    bool IsDIP3Enforced(int nHeight) const;
+    bool IsDIP3Enforced() const;
+
 private:
     void CleanupCache(int nHeight);
 };
