@@ -2844,6 +2844,9 @@ bool CWallet::FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, bool ov
     coinControl.fOverrideFeeRate = overrideEstimatedFeeRate;
     coinControl.nFeeRate = specificFeeRate;
 
+    const int nExtraSize = tx.isSaplingVersion() ?
+            (int)(GetSerializeSizeNetwork(tx.sapData) + GetSerializeSizeNetwork(tx.extraPayload)) : 0;
+
     for (const CTxIn& txin : tx.vin) {
         coinControl.Select(txin.prevout);
     }
@@ -2854,8 +2857,9 @@ bool CWallet::FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, bool ov
 
     CReserveKey reservekey(this);
     CTransactionRef wtx;
-    if (!CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePosInOut, strFailReason, &coinControl, ALL_COINS, false))
+    if (!CreateTransaction(vecSend, wtx, reservekey, nFeeRet, nChangePosInOut, strFailReason, &coinControl, ALL_COINS, false, 0, false, nullptr, nExtraSize)) {
         return false;
+    }
 
     if (nChangePosInOut != -1) {
         tx.vout.insert(tx.vout.begin() + nChangePosInOut, wtx->vout[nChangePosInOut]);
@@ -2886,7 +2890,8 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend,
     bool sign,
     CAmount nFeePay,
     bool fIncludeDelegated,
-    bool* fStakeDelegationVoided)
+    bool* fStakeDelegationVoided,
+    int nExtraSize)
 {
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
@@ -3037,7 +3042,8 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend,
                     nIn++;
                 }
 
-                const unsigned int nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION);
+                // account for additional payloads in fee calculation
+                const unsigned int nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION) + nExtraSize;
                 CAmount nFeeNeeded = std::max(nFeePay, GetMinimumFee(nBytes, nTxConfirmTarget, mempool));
 
                 // Remove scriptSigs to eliminate the fee calculation dummy signatures
