@@ -4,8 +4,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "masternode-payments.h"
+
 #include "addrman.h"
 #include "chainparams.h"
+#include "evo/deterministicmns.h"
 #include "fs.h"
 #include "budget/budgetmanager.h"
 #include "masternode-sync.h"
@@ -372,6 +374,12 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
     if (!masternodeSync.IsBlockchainSynced()) return;
 
     if (fLiteMode) return; //disable all Masternode related functionality
+
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        LogPrint(BCLog::MASTERNODE, "mnw - skip obsolete message %s\n", strCommand);
+        return;
+    }
 
 
     if (strCommand == NetMsgType::GETMNWINNERS) { //Masternode Payments Request Sync
