@@ -1932,8 +1932,8 @@ bool AppInitMain()
             activeMasternodeManager->Init();
         } else {
             // Check enforcement
-            if (isDIP3Enforced) {
-                const std::string strError = "Legacy masternode system disabled. Use -mnoperatorprivatekey to start as deterministic masternode";
+            if (deterministicMNManager->LegacyMNObsolete()) {
+                const std::string strError = "Legacy masternode system is obsolete. Use -mnoperatorprivatekey to start as deterministic masternode";
                 LogPrintf("-- ERROR: %s\n", strError);
                 return UIError(_(strError.c_str()));
             }
