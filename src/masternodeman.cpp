@@ -191,6 +191,11 @@ CMasternodeMan::CMasternodeMan():
 
 bool CMasternodeMan::Add(CMasternode& mn)
 {
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        return false;
+    }
+
     LOCK(cs);
 
     if (!mn.IsAvailableState())
@@ -209,6 +214,11 @@ bool CMasternodeMan::Add(CMasternode& mn)
 
 void CMasternodeMan::AskForMN(CNode* pnode, const CTxIn& vin)
 {
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        return;
+    }
+
     std::map<COutPoint, int64_t>::iterator i = mWeAskedForMasternodeListEntry.find(vin.prevout);
     if (i != mWeAskedForMasternodeListEntry.end()) {
         int64_t t = (*i).second;
@@ -226,6 +236,13 @@ void CMasternodeMan::AskForMN(CNode* pnode, const CTxIn& vin)
 int CMasternodeMan::CheckAndRemove(bool forceExpiredRemoval)
 {
     LOCK(cs);
+
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        LogPrint(BCLog::MASTERNODE, "Removing all legacy mn due to SPORK 21\n");
+        Clear();
+        return 0;
+    }
 
     //remove inactive and outdated
     auto it = mapMasternodes.begin();
@@ -405,6 +422,11 @@ int CMasternodeMan::CountNetworks(int& ipv4, int& ipv6, int& onion) const
 
 void CMasternodeMan::DsegUpdate(CNode* pnode)
 {
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        return;
+    }
+
     LOCK(cs);
 
     if (Params().NetworkIDString() == CBaseChainParams::MAIN) {
@@ -452,6 +474,11 @@ CMasternode* CMasternodeMan::Find(const CPubKey& pubKeyMasternode)
 
 void CMasternodeMan::CheckSpentCollaterals(const std::vector<CTransactionRef>& vtx)
 {
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        return;
+    }
+
     LOCK(cs);
     for (const auto& tx : vtx) {
         for (const auto& in : tx->vin) {
@@ -728,6 +755,12 @@ int CMasternodeMan::ProcessMNPing(CNode* pfrom, CMasternodePing& mnp)
 
 int CMasternodeMan::ProcessGetMNList(CNode* pfrom, CTxIn& vin)
 {
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        LogPrint(BCLog::MASTERNODE, "dseg - skip obsolete message\n");
+        return 0;
+    }
+
     if (vin.IsNull()) { //only should ask for this once
         //local network
         bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
@@ -795,6 +828,12 @@ int CMasternodeMan::ProcessMessageInner(CNode* pfrom, std::string& strCommand, C
     if (fLiteMode) return 0; //disable all Masternode related functionality
     if (!masternodeSync.IsBlockchainSynced()) return 0;
 
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        LogPrint(BCLog::MASTERNODE, "%s: skip obsolete message %s\n", __func__, strCommand);
+        return 0;
+    }
+
     LOCK(cs_process_message);
 
     if (strCommand == NetMsgType::MNBROADCAST) {
@@ -830,6 +869,12 @@ void CMasternodeMan::Remove(const COutPoint& collateralOut)
 
 void CMasternodeMan::UpdateMasternodeList(CMasternodeBroadcast& mnb)
 {
+    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
+    if (deterministicMNManager->LegacyMNObsolete()) {
+        LogPrint(BCLog::MASTERNODE, "Removing all legacy mn due to SPORK 21\n");
+        return;
+    }
+
     mapSeenMasternodePing.emplace(mnb.lastPing.GetHash(), mnb.lastPing);
     mapSeenMasternodeBroadcast.emplace(mnb.GetHash(), mnb);
     masternodeSync.AddedMasternodeList(mnb.GetHash());
