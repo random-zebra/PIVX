@@ -142,7 +142,6 @@ public:
         consensus.nCoinbaseMaturity = 100;
         consensus.nFutureTimeDriftPoW = 7200;
         consensus.nFutureTimeDriftPoS = 180;
-        consensus.nMasternodeCountDrift = 20;       // num of MN we allow the see-saw payments to be off by
         consensus.nMaxMoneyOut = 21000000 * COIN;
         consensus.nMNCollateralAmt = 10000 * COIN;
         consensus.nPoolMaxTransactions = 3;
@@ -281,7 +280,6 @@ public:
         consensus.nCoinbaseMaturity = 15;
         consensus.nFutureTimeDriftPoW = 7200;
         consensus.nFutureTimeDriftPoS = 180;
-        consensus.nMasternodeCountDrift = 20;       // num of MN we allow the see-saw payments to be off by
         consensus.nMaxMoneyOut = 21000000 * COIN;
         consensus.nMNCollateralAmt = 10000 * COIN;
         consensus.nPoolMaxTransactions = 3;
@@ -404,7 +402,6 @@ public:
         consensus.nCoinbaseMaturity = 100;
         consensus.nFutureTimeDriftPoW = 7200;
         consensus.nFutureTimeDriftPoS = 180;
-        consensus.nMasternodeCountDrift = 4;        // num of MN we allow the see-saw payments to be off by
         consensus.nMaxMoneyOut = 43199500 * COIN;
         consensus.nMNCollateralAmt = 100 * COIN;
         consensus.nPoolMaxTransactions = 2;
