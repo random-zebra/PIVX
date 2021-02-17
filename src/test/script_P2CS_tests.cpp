@@ -54,4 +54,87 @@ BOOST_AUTO_TEST_CASE(extract_cold_staking_destination_keys)
     CheckValidKeyId(destVector[1], ownerId);
 }
 
+static CScript GetNewP2CS()
+{
+    CKey stakerKey;
+    stakerKey.MakeNewKey(true);
+    const CKeyID& stakerID = stakerKey.GetPubKey().GetID();
+    CKey ownerKey;
+    ownerKey.MakeNewKey(true);
+    const CKeyID& ownerID = ownerKey.GetPubKey().GetID();
+    return GetScriptForStakeDelegation(stakerID, ownerID);
+}
+
+static CMutableTransaction CreateNewColdStakeTx(CScript& scriptP2CS)
+{
+    scriptP2CS = GetNewP2CS();
+
+    // Create from transaction:
+    CMutableTransaction txFrom;
+    txFrom.vout.resize(1);
+    txFrom.vout[0].nValue = 200 * COIN;
+    txFrom.vout[0].scriptPubKey = scriptP2CS;
+
+    // Create coldstake
+    CMutableTransaction tx;
+    tx.vin.resize(1);
+    tx.vout.resize(2);
+    tx.vin[0].prevout.n = 0;
+    tx.vin[0].prevout.hash = txFrom.GetHash();
+    tx.vout[0].nValue = 0;
+    tx.vout[0].scriptPubKey.clear();
+    tx.vout[1].nValue = 101 * COIN;
+    tx.vout[1].scriptPubKey = scriptP2CS;
+
+    return tx;
+}
+
+static CScript GetNewPayee()
+{
+    CKey key;
+    key.MakeNewKey(true);
+    const CKeyID& keyId = key.GetPubKey().GetID();
+    return GetScriptForDestination(keyId);
+}
+
+static bool CheckP2CSScript(const CMutableTransaction& mtx, const CScript& script)
+{
+    CTransaction tx(mtx);
+    return tx.CheckColdStake(script);
+}
+
+BOOST_AUTO_TEST_CASE(coldstake_script)
+{
+    CScript scriptP2CS;
+    CMutableTransaction good_tx = CreateNewColdStakeTx(scriptP2CS);
+    CMutableTransaction tx(good_tx);
+    BOOST_CHECK(CheckP2CSScript(tx, scriptP2CS));
+
+    // Add another p2cs out
+    tx.vout.emplace_back(101 * COIN, scriptP2CS);
+    BOOST_CHECK(CheckP2CSScript(tx, scriptP2CS));
+
+    // Add a masternode out
+    tx.vout.emplace_back(COIN, GetNewPayee());
+    BOOST_CHECK(CheckP2CSScript(tx, scriptP2CS));
+
+    // Add another dummy out
+    tx.vout.emplace_back(COIN, GetNewPayee());
+    BOOST_CHECK(!CheckP2CSScript(tx, scriptP2CS));
+
+    // Replace with new p2cs
+    tx = good_tx;
+    do {
+        tx.vout[1].scriptPubKey = GetNewP2CS();
+    } while (tx.vout[1].scriptPubKey == scriptP2CS);
+    BOOST_CHECK(!CheckP2CSScript(tx, scriptP2CS));
+
+    // Replace with single dummy out
+    tx = good_tx;
+    tx.vout[1] = CTxOut(COIN, GetNewPayee());
+    BOOST_CHECK(!CheckP2CSScript(tx, scriptP2CS));
+    tx.vout.emplace_back(101 * COIN, scriptP2CS);
+    BOOST_CHECK(!CheckP2CSScript(tx, scriptP2CS));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
