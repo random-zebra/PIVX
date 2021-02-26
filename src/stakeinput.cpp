@@ -56,7 +56,7 @@ CAmount CPivStake::GetValue() const
     return outputFrom.nValue;
 }
 
-bool CPivStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmount nTotal, const bool onlyP2PK)
+bool CPivStake::CreateTxOuts(const CWallet* pwallet, std::vector<CTxOut>& vout, CAmount nTotal, const bool onlyP2PK) const
 {
     std::vector<valtype> vSolutions;
     txnouttype whichType;
