@@ -3124,12 +3124,11 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CTr
 }
 
 bool CWallet::CreateCoinStake(
-        const CKeyStore& keystore,
         const CBlockIndex* pindexPrev,
         unsigned int nBits,
         CMutableTransaction& txNew,
         int64_t& nTxNewTime,
-        std::vector<CStakeableOutput>* availableCoins)
+        std::vector<CStakeableOutput>* availableCoins) const
 {
 
     const Consensus::Params& consensus = Params().GetConsensus();
@@ -3237,9 +3236,11 @@ bool CWallet::CreateCoinStake(
     }
     LogPrint(BCLog::STAKING, "%s: attempted staking %d times\n", __func__, nAttempts);
 
-    if (!fKernelFound)
-        return false;
+    return fKernelFound;
+}
 
+bool CWallet::SignCoinStake(CMutableTransaction& txNew) const
+{
     // Sign it
     int nIn = 0;
     for (const CTxIn& txIn : txNew.vin) {
@@ -3248,7 +3249,7 @@ bool CWallet::CreateCoinStake(
             return error("%s : failed to sign coinstake", __func__);
     }
 
-    // Successfully generated coinstake
+    // Successfully signed coinstake
     return true;
 }
 
