@@ -3224,9 +3224,6 @@ bool CWallet::CreateCoinStake(
         // Set coinstake input
         txNew.vin.emplace_back(stakeInput.GetTxIn());
 
-        // Masternode payment
-        FillBlockPayee(txNew, pindexPrev->nHeight + 1, true);
-
         // Limit size
         unsigned int nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION);
         if (nBytes >= DEFAULT_BLOCK_MAX_SIZE / 5)
