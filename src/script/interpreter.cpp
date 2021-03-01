@@ -960,10 +960,19 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                 }
                 break;
 
+                case OP_CHECKCOLDSTAKEVERIFY:
+                {
+                    // check it is used in a valid cold stake transaction.
+                    if(!checker.CheckColdStake(script, false)) {
+                        return set_error(serror, SCRIPT_ERR_CHECKCOLDSTAKEVERIFY);
+                    }
+                }
+                break;
+
                 case OP_CHECKCOLDSTAKEVERIFY_LOF:
                 {
                     // check it is used in a valid cold stake transaction.
-                    if(!checker.CheckColdStake(script)) {
+                    if(!checker.CheckColdStake(script, true)) {
                         return set_error(serror, SCRIPT_ERR_CHECKCOLDSTAKEVERIFY);
                     }
                 }
@@ -1342,7 +1351,7 @@ bool TransactionSignatureChecker::CheckLockTime(const CScriptNum& nLockTime) con
     return true;
 }
 
-bool TransactionSignatureChecker::CheckColdStake(const CScript& prevoutScript) const
+bool TransactionSignatureChecker::CheckColdStake(const CScript& prevoutScript, bool fAllowLastOutputFree) const
 {
     // Transaction must be a coinstake tx
     if (!txTo->IsCoinStake()) {
@@ -1355,23 +1364,22 @@ bool TransactionSignatureChecker::CheckColdStake(const CScript& prevoutScript) c
     // Since this is a coinstake, it has at least 2 outputs
     const unsigned int outs = txTo->vout.size();
     assert(outs >= 2);
-    // All outputs, except the first, and (for cold stakes with outs >=3) the last one,
-    // must have the same pubKeyScript, and it must match the script we are spending.
-    // If the coinstake has at least 3 outputs, the last one is left free, to be used for
-    // budget/masternode payments, and is checked in CheckColdstakeFreeOutput().
+    // All outputs must have the same pubKeyScript, and it must match the script we are spending.
+    // If the coinstake has at least 3 outputs, the last one can be left free, to be used for
+    // budget/masternode payments (before v6.0 enforcement), and is checked in CheckColdstakeFreeOutput().
     // Here we verify only that input amount goes to the non-free outputs.
     CAmount outValue{0};
     for (unsigned int i = 1; i < outs; i++) {
         if (txTo->vout[i].scriptPubKey != prevoutScript) {
-            // Only the last one can be different (and only when outs >=3)
-            if (i != outs-1 || outs < 3) {
+            // Only the last one can be different (and only when outs >=3 and fAllowLastOutputFree=true)
+            if (!fAllowLastOutputFree || i != outs-1 || outs < 3) {
                 return false;
             }
         } else {
             outValue += txTo->vout[i].nValue;
         }
     }
-    return outValue > amount;
+    return outValue >= amount;
 }
 
 
