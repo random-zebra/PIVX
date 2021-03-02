@@ -241,14 +241,14 @@ void CMasternodeMan::AskForMN(CNode* pnode, const CTxIn& vin)
 
 int CMasternodeMan::CheckAndRemove(bool forceExpiredRemoval)
 {
-    LOCK(cs);
-
     // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
     if (deterministicMNManager->LegacyMNObsolete()) {
         LogPrint(BCLog::MASTERNODE, "Removing all legacy mn due to SPORK 21\n");
         Clear();
         return 0;
     }
+
+    LOCK(cs);
 
     //remove inactive and outdated (or replaced by DMN)
     auto it = mapMasternodes.begin();
@@ -685,12 +685,6 @@ std::vector<std::pair<int64_t, MasternodeRef>> CMasternodeMan::GetMasternodeRank
 
 int CMasternodeMan::ProcessMNBroadcast(CNode* pfrom, CMasternodeBroadcast& mnb)
 {
-    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
-    if (deterministicMNManager->LegacyMNObsolete()) {
-        LogPrint(BCLog::MASTERNODE, "mnb - skip obsolete message\n");
-        return 0;
-    }
-
     const uint256& mnbHash = mnb.GetHash();
     if (mapSeenMasternodeBroadcast.count(mnbHash)) { //seen
         masternodeSync.AddedMasternodeList(mnbHash);
@@ -728,12 +722,6 @@ int CMasternodeMan::ProcessMNBroadcast(CNode* pfrom, CMasternodeBroadcast& mnb)
 
 int CMasternodeMan::ProcessMNPing(CNode* pfrom, CMasternodePing& mnp)
 {
-    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
-    if (deterministicMNManager->LegacyMNObsolete()) {
-        LogPrint(BCLog::MASTERNODE, "mnb - skip obsolete message\n");
-        return 0;
-    }
-
     const uint256& mnpHash = mnp.GetHash();
     if (mapSeenMasternodePing.count(mnpHash)) return 0; //seen
 
@@ -760,12 +748,6 @@ int CMasternodeMan::ProcessMNPing(CNode* pfrom, CMasternodePing& mnp)
 
 int CMasternodeMan::ProcessGetMNList(CNode* pfrom, CTxIn& vin)
 {
-    // Skip after legacy obsolete. !TODO: remove when transition to DMN is complete
-    if (deterministicMNManager->LegacyMNObsolete()) {
-        LogPrint(BCLog::MASTERNODE, "dseg - skip obsolete message\n");
-        return 0;
-    }
-
     if (vin.IsNull()) { //only should ask for this once
         //local network
         bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
@@ -884,7 +866,7 @@ void CMasternodeMan::UpdateMasternodeList(CMasternodeBroadcast& mnb)
     mapSeenMasternodeBroadcast.emplace(mnb.GetHash(), mnb);
     masternodeSync.AddedMasternodeList(mnb.GetHash());
 
-    LogPrint(BCLog::MASTERNODE,"CMasternodeMan::UpdateMasternodeList() -- masternode=%s\n", mnb.vin.prevout.ToString());
+    LogPrint(BCLog::MASTERNODE,"%s -- masternode=%s\n", __func__, mnb.vin.prevout.ToString());
 
     CMasternode* pmn = Find(mnb.vin.prevout);
     if (pmn == NULL) {
