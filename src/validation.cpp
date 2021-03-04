@@ -362,7 +362,6 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
     const CChainParams& params = Params();
     const Consensus::Params& consensus = params.GetConsensus();
     int chainHeight = chainActive.Height();
-    bool fSaplingActive = consensus.NetworkUpgradeActive(chainHeight, Consensus::UPGRADE_V5_0);
 
     // Zerocoin txes are not longer accepted in the mempool.
     if (hasTxZerocoins) {
