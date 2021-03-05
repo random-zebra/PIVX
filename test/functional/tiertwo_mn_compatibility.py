@@ -64,14 +64,10 @@ class MasternodeCompatibilityTest(PivxTier2TestFramework):
         mnlist = node.listmasternodes()
         assert_equal(len(mnlist), len(txHashSet))
         foundHashes = set([mn["txhash"] for mn in mnlist if mn["txhash"] in txHashSet])
-        assert_equal(len(foundHashes), len(txHashSet))
+        if len(foundHashes) != len(txHashSet):
+            raise Exception(str(mnlist))
         for x in mnlist:
-            if 'addr' in x:
-                # legacy mn
-                self.mn_addresses.add(x['addr'])
-            else:
-                # deterministic mn
-                self.mn_addresses.add(x['dmnstate']['payoutAddress'])
+            self.mn_addresses.add(x["addr"])
 
     def run_test(self):
         self.mn_addresses = set()
@@ -125,7 +121,9 @@ class MasternodeCompatibilityTest(PivxTier2TestFramework):
         assert_equal(cbase_tx['vin'][0]['coinbase'], cbase_script.hex())
         assert_equal(len(cbase_tx['vout']), 1)
         assert_equal(cbase_tx['vout'][0]['value'], Decimal("3.0"))
-        assert cbase_tx['vout'][0]['scriptPubKey']['addresses'][0] in self.mn_addresses
+        payee = cbase_tx['vout'][0]['scriptPubKey']['addresses'][0]
+        if payee not in self.mn_addresses:
+            raise Exception("payee %s not found in expected list %s" % (payee, str(self.mn_addresses)))
         cstake_tx = self.miner.getrawtransaction(blk['tx'][1], True)
         assert_equal(len(cstake_tx['vin']), 1)
         assert_equal(len(cstake_tx['vout']), 2)

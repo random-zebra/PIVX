@@ -506,7 +506,7 @@ CDeterministicMNManager::CDeterministicMNManager(CEvoDB& _evoDb) :
 bool CDeterministicMNManager::ProcessBlock(const CBlock& block, const CBlockIndex* pindex, CValidationState& _state, bool fJustCheck)
 {
     int nHeight = pindex->nHeight;
-    if (!Params().GetConsensus().NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_0)) {
+    if (!IsDIP3Enforced(nHeight)) {
         // nothing to do
         return true;
     }
@@ -564,7 +564,7 @@ bool CDeterministicMNManager::ProcessBlock(const CBlock& block, const CBlockInde
 
 bool CDeterministicMNManager::UndoBlock(const CBlock& block, const CBlockIndex* pindex)
 {
-    if (!Params().GetConsensus().NetworkUpgradeActive(pindex->nHeight, Consensus::UPGRADE_V6_0)) {
+    if (!IsDIP3Enforced(pindex->nHeight)) {
         // nothing to do
         return true;
     }
