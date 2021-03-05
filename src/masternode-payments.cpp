@@ -309,8 +309,23 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
 bool CMasternodePayments::GetMasternodeTxOuts(const CBlockIndex* pindexPrev, std::vector<CTxOut>& voutMasternodePaymentsRet) const
 {
     if (deterministicMNManager->LegacyMNObsolete(pindexPrev->nHeight + 1)) {
-        // New payment logic (!TODO)
-        return false;
+        CAmount masternodeReward = GetMasternodePayment();
+        auto dmnPayee = deterministicMNManager->GetListForBlock(pindexPrev).GetMNPayee();
+        if (!dmnPayee) {
+            return error("%s: Failed to get payees for block at height %d", __func__, pindexPrev->nHeight + 1);
+        }
+        CAmount operatorReward = 0;
+        if (dmnPayee->nOperatorReward != 0 && !dmnPayee->pdmnState->scriptOperatorPayout.empty()) {
+            operatorReward = (masternodeReward * dmnPayee->nOperatorReward) / 10000;
+            masternodeReward -= operatorReward;
+        }
+        if (masternodeReward > 0) {
+            voutMasternodePaymentsRet.emplace_back(masternodeReward, dmnPayee->pdmnState->scriptPayout);
+        }
+        if (operatorReward > 0) {
+            voutMasternodePaymentsRet.emplace_back(operatorReward, dmnPayee->pdmnState->scriptOperatorPayout);
+        }
+        return true;
     }
 
     // Legacy payment logic. !TODO: remove when transition to DMN is complete
@@ -319,7 +334,6 @@ bool CMasternodePayments::GetMasternodeTxOuts(const CBlockIndex* pindexPrev, std
 
 bool CMasternodePayments::GetLegacyMasternodeTxOut(int nHeight, std::vector<CTxOut>& voutMasternodePaymentsRet) const
 {
-    if (nHeight == 0) return false;
     voutMasternodePaymentsRet.clear();
 
     CScript payee;
@@ -628,8 +642,28 @@ std::string CMasternodePayments::GetRequiredPaymentsString(int nBlockHeight)
 bool CMasternodePayments::IsTransactionValid(const CTransaction& txNew, const CBlockIndex* pindexPrev)
 {
     if (deterministicMNManager->LegacyMNObsolete()) {
-        // !TODO
-        return false;
+        std::vector<CTxOut> vecMnOuts;
+        if (!GetMasternodeTxOuts(pindexPrev, vecMnOuts)) {
+            return true;
+        }
+
+        for (const CTxOut& mnOut: vecMnOuts) {
+            bool found = false;
+            for (const CTxOut& txOut: txNew.vout) {
+                if (txOut == mnOut) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                CTxDestination mnDest;
+                if (!ExtractDestination(mnOut.scriptPubKey, mnDest))
+                    assert(false);
+                return error("%s: Failed to find expected payee %s in block at height %d",
+                             __func__, EncodeDestination(mnDest), pindexPrev->nHeight + 1);
+            }
+        }
+        return true;
     }
 
     // Legacy payment logic. !TODO: remove when transition to DMN is complete
