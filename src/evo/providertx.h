@@ -68,6 +68,6 @@ public:
     void ToJson(UniValue& obj) const;
 };
 
-bool CheckProRegTx(const CTransaction& tx, CValidationState& state);
+bool CheckProRegTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CValidationState& state);
 
 #endif  //PIVX_PROVIDERTX_H
