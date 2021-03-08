@@ -96,6 +96,7 @@ class CScheduler;
 class ScriptPubKeyMan;
 class SaplingScriptPubKeyMan;
 class SaplingNoteData;
+class CDeterministicMNList;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature {
@@ -832,6 +833,30 @@ public:
     void UnlockCoin(const COutPoint& output);
     void UnlockAllCoins();
     std::set<COutPoint> ListLockedCoins();
+
+    /*
+     *  Requires cs_wallet lock.
+     *  Lock for spending the coin c, if it's owned by the wallet, it's unspent, and:
+     *  -- If ptx is not null, c is one of the outputs of *ptx
+     *  -- If ptx is null, c is the output of a transaction in mapWallet
+     */
+    void LockOutpointIfMine(const CTransactionRef& ptx, const COutPoint& c);
+
+    /*
+     *  Locks cs_wallet
+     *  Called during Init. If a DMN collateral is found in the wallet,
+     *  lock the corresponding coin, to prevent accidental spending.
+     */
+    void ScanMasternodeCollateralsAndLock(const CDeterministicMNList& mnList);
+
+    /*
+     *  Requires cs_wallet lock.
+     *  Called from AddToWalletIfInvolvingMe. If ptx is a ProRegTx, and the
+     *  collateral (either referenced or created) is owned by this wallet,
+     *  lock the corresponding coin, to prevent accidental spending.
+     */
+    void LockIfMyCollateral(const CTransactionRef& ptx);
+
 
     //  keystore implementation
     PairResult getNewAddress(CTxDestination& ret, const std::string addressLabel, const std::string purpose,

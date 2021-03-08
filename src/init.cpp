@@ -22,6 +22,7 @@
 #include "checkpoints.h"
 #include "compat/sanity.h"
 #include "consensus/upgrades.h"
+#include "evo/deterministicmns.h"
 #include "evo/evonotificationinterface.h"
 #include "fs.h"
 #include "httpserver.h"
@@ -750,6 +751,13 @@ void ThreadImport(const std::vector<fs::path>& vImportFiles)
     // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN payments and budgets
     // but don't call it directly to prevent triggering of other listeners like zmq etc.
     pEvoNotificationInterface->InitializeCurrentBlockTip();
+
+    // Scan for masternode collaterals and lock them
+#ifdef ENABLE_WALLET
+    if (gArgs.GetBoolArg("-mnconflock", DEFAULT_MNCONFLOCK) && pwalletMain) {
+        pwalletMain->ScanMasternodeCollateralsAndLock(deterministicMNManager->GetListAtChainTip());
+    }
+#endif
 
     if (gArgs.GetBoolArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
         LoadMempool();
@@ -1947,6 +1955,7 @@ bool AppInitMain()
     //get the mode of budget voting for this masternode
     strBudgetMode = gArgs.GetArg("-budgetvotemode", "auto");
 
+    // !TODO: remove after complete transition to DMN
 #ifdef ENABLE_WALLET
     if (gArgs.GetBoolArg("-mnconflock", DEFAULT_MNCONFLOCK) && pwalletMain) {
         LOCK(pwalletMain->cs_wallet);
