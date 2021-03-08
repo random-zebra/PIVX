@@ -48,13 +48,13 @@ from .util import (
     connect_nodes_clique,
     disconnect_nodes,
     get_collateral_vout,
-    lock_utxo,
     Decimal,
     DEFAULT_FEE,
     get_datadir_path,
     hex_str_to_bytes,
     bytes_to_hex_str,
     initialize_datadir,
+    is_coin_locked_by,
     create_new_dmn,
     p2p_port,
     set_node_times,
@@ -1168,14 +1168,12 @@ class PivxTestFramework():
                                                        op_rew["reward"], op_rew["address"])
         dmn.collateral = COutPoint(int(dmn.proTx, 16),
                                    get_collateral_vout(controller.getrawtransaction(dmn.proTx, True)))
-        if lock:
-            lock_utxo(controller, dmn.collateral)
 
     """
     Create a ProReg tx, which references an 100 PIV UTXO as collateral.
     The controller node owns the collateral and creates the ProReg tx.
     """
-    def protx_register(self, miner, controller, dmn, collateral_addr, fLock):
+    def protx_register(self, miner, controller, dmn, collateral_addr):
         # send to the owner the exact collateral tx amount
         funding_txid = miner.sendtoaddress(collateral_addr, Decimal('100'))
         # send another output to be used for the fee of the proReg tx
@@ -1189,14 +1187,12 @@ class PivxTestFramework():
         dmn.collateral = COutPoint(int(funding_txid, 16), get_collateral_vout(json_tx))
         dmn.proTx = controller.protx_register(funding_txid, dmn.collateral.n, dmn.ipport, dmn.owner,
                                               dmn.operator, dmn.voting, dmn.payee)
-        if fLock:
-            lock_utxo(controller, dmn.collateral)
 
     """
     Create a ProReg tx, referencing a collateral signed externally (eg. HW wallets).
     Here the controller node owns the collateral (and signs), but the miner creates the ProReg tx.
     """
-    def protx_register_ext(self, miner, controller, dmn, outpoint, fSubmit, fLock):
+    def protx_register_ext(self, miner, controller, dmn, outpoint, fSubmit):
         # send to the owner the collateral tx if the outpoint is not specified
         if outpoint is None:
             funding_txid = miner.sendtoaddress(controller.getnewaddress("collateral"), Decimal('100'))
@@ -1212,8 +1208,6 @@ class PivxTestFramework():
                                               dmn.operator, dmn.voting, dmn.payee)
         sig = controller.signmessage(reg_tx["collateralAddress"], reg_tx["signMessage"])
         if fSubmit:
-            if fLock:
-                lock_utxo(controller, dmn.collateral)
             dmn.proTx = miner.protx_register_submit(reg_tx["tx"], sig)
         else:
             return reg_tx["tx"], sig
@@ -1229,11 +1223,10 @@ class PivxTestFramework():
                                  If not provided, a new utxo is created, sending it from the miner.
              op_addr_and_key:  (list of strings) List with two entries, operator address (0) and private key (1). 
                                  If not provided, a new address-key pair is generated.
-             fLock:            (boolean) lock the collateral output
     :return: dmn:              (Masternode) the deterministic masternode object
     """
     def register_new_dmn(self, idx, miner_idx, controller_idx, strType,
-                         payout_addr=None, outpoint=None, op_addr_and_key=None, fLock=True):
+                         payout_addr=None, outpoint=None, op_addr_and_key=None):
         # Prepare remote node
         assert idx != miner_idx
         assert idx != controller_idx
@@ -1251,11 +1244,11 @@ class PivxTestFramework():
         self.log.info("Creating%s proRegTx for deterministic masternode idx=%d..." % (
             " and funding" if strType == "fund" else "", idx))
         if strType == "fund":
-            self.protx_register_fund(miner_node, controller_node, dmn, collateral_addr, fLock)
+            self.protx_register_fund(miner_node, controller_node, dmn, collateral_addr)
         elif strType == "internal":
-            self.protx_register(miner_node, controller_node, dmn, collateral_addr, fLock)
+            self.protx_register(miner_node, controller_node, dmn, collateral_addr)
         elif strType == "external":
-            self.protx_register_ext(miner_node, controller_node, dmn, outpoint, True, fLock)
+            self.protx_register_ext(miner_node, controller_node, dmn, outpoint, True)
         else:
             raise Exception("Type %s not available" % strType)
         time.sleep(1)
@@ -1266,6 +1259,10 @@ class PivxTestFramework():
         sync_blocks(self.nodes)
         assert_greater_than(mn_node.getrawtransaction(dmn.proTx, 1)["confirmations"], 0)
         assert dmn.proTx in mn_node.protx_list(False)
+
+        # check coin locking
+        assert is_coin_locked_by(controller_node, dmn.collateral)
+
         return dmn
 
     def check_mn_list_on_node(self, idx, mns):
