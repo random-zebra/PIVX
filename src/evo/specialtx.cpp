@@ -15,16 +15,7 @@
 #include "primitives/transaction.h"
 #include "primitives/block.h"
 
-bool ContextualCheckSpecialTransaction(const CTransactionRef& tx, CValidationState& state, const Consensus::Params& consensus, int nHeight)
-{
-    if (tx->IsSpecialTx() && !consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V6_0)) {
-        return state.DoS(100, error("%s: Special tx when EVO upgrade not enforced yet", __func__),
-                         REJECT_INVALID, "bad-txns-evo-not-active");
-    }
-    return true;
-}
-
-bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
+bool CheckSpecialTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CValidationState& state)
 {
     bool hasExtraPayload = tx.hasExtraPayload();
     bool isNormalType = tx.IsNormalType();
@@ -45,6 +36,11 @@ bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
     }
 
     // --- From here on, tx has nVersion>=2 and nType!=0
+
+    if (pindexPrev && !Params().GetConsensus().NetworkUpgradeActive(pindexPrev->nHeight + 1, Consensus::UPGRADE_V6_0)) {
+        return state.DoS(100, error("%s: Special tx when EVO upgrade not enforced yet", __func__),
+                         REJECT_INVALID, "bad-txns-evo-not-active");
+    }
 
     // Cannot be coinbase/coinstake tx
     if (tx.IsCoinBase() || tx.IsCoinStake()) {
@@ -75,6 +71,12 @@ bool CheckSpecialTx(const CTransaction& tx, CValidationState& state)
 
 bool ProcessSpecialTxsInBlock(const CBlock& block, const CBlockIndex* pindex, CValidationState& state, bool fJustCheck)
 {
+    for (const CTransactionRef& tx: block.vtx) {
+        if (!CheckSpecialTx(*tx, pindex->pprev, state)) {
+            // pass the state returned by the function above
+            return false;
+        }
+    }
     // !TODO: ProcessBlock llmq quorum block processor
     if (!deterministicMNManager->ProcessBlock(block, pindex, state, fJustCheck)) {
         // pass the state returned by the function above
