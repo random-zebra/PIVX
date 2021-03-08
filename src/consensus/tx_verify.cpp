@@ -83,11 +83,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, bool fCol
         return false;
     }
 
-    // Dispatch to SpecialTx validator
-    if (!CheckSpecialTx(tx, state)) {
-        return false;
-    }
-
     // Check for negative or overflow output values
     const Consensus::Params& consensus = Params().GetConsensus();
     for (const CTxOut& txout : tx.vout) {
@@ -135,11 +130,6 @@ bool ContextualCheckTransaction(const CTransactionRef& tx, CValidationState& sta
 {
     // Dispatch to Sapling validator
     if (!SaplingValidation::ContextualCheckTransaction(*tx, state, chainparams, nHeight, true, fIBD)) {
-        return false; // Failure reason has been set in validation state object
-    }
-
-    // Dispatch to SpecialTx validator
-    if (!ContextualCheckSpecialTransaction(tx, state, chainparams.GetConsensus(), nHeight)) {
         return false; // Failure reason has been set in validation state object
     }
 

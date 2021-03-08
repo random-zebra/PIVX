@@ -256,7 +256,8 @@ static std::string SignAndSendSpecialTx(CMutableTransaction& tx, const ProRegPL&
     SetTxPayload(tx, pl);
 
     CValidationState state;
-    if (!CheckSpecialTx(tx, state)) {
+    const CBlockIndex* pindexTip = WITH_LOCK(cs_main, return mapBlockIndex.at(chainActive.Tip()->GetBlockHash()));
+    if (!CheckSpecialTx(tx, pindexTip, state)) {
         throw std::runtime_error(FormatStateMessage(state));
     }
 

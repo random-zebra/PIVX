@@ -388,10 +388,6 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
     if (tx.IsCoinStake())
         return state.DoS(100, false, REJECT_INVALID, "coinstake");
 
-    if (pool.existsProviderTxConflict(tx)) {
-        return state.DoS(0, false, REJECT_DUPLICATE, "protx-dup");
-    }
-
     // Only accept nLockTime-using transactions that can be mined in the next
     // block; we don't want our mempool filled up with transactions that can't
     // be mined yet.
@@ -576,6 +572,15 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         std::string errString;
         if (!pool.CalculateMemPoolAncestors(entry, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
             return state.DoS(0, error("%s : %s", __func__, errString), REJECT_NONSTANDARD, "too-long-mempool-chain", false);
+        }
+
+        if (!CheckSpecialTx(tx, chainActive.Tip(), state)) {
+            // pass the state returned by the function above
+            return false;
+        }
+
+        if (pool.existsProviderTxConflict(tx)) {
+            return state.DoS(0, false, REJECT_DUPLICATE, "protx-dup");
         }
 
         bool fCLTVIsActivated = consensus.NetworkUpgradeActive(chainHeight, Consensus::UPGRADE_BIP65);
