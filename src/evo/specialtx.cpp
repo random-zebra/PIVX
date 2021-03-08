@@ -62,7 +62,7 @@ bool CheckSpecialTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CVali
 
     switch (tx.nType) {
         case CTransaction::TxType::PROREG:
-            return CheckProRegTx(tx, state);
+            return CheckProRegTx(tx, pindexPrev, state);
     }
 
     return state.DoS(10, error("%s : special tx %s with invalid type %d",
