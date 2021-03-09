@@ -1257,11 +1257,15 @@ class PivxTestFramework():
         # confirm and verify inclusion in list
         miner_node.generate(1)
         sync_blocks(self.nodes)
-        assert_greater_than(mn_node.getrawtransaction(dmn.proTx, 1)["confirmations"], 0)
+        json_tx = mn_node.getrawtransaction(dmn.proTx, 1)
+        assert_greater_than(json_tx["confirmations"], 0)
         assert dmn.proTx in mn_node.protx_list(False)
 
         # check coin locking
         assert is_coin_locked_by(controller_node, dmn.collateral)
+
+        # check json payload against local dmn object
+        self.check_proreg_payload(dmn, json_tx)
 
         return dmn
 
@@ -1273,6 +1277,22 @@ class PivxTestFramework():
         for mn in mns:
             if mn.proTx not in protxs:
                 raise Exception("ProTx for mn %d (%s) not found in the list of node %d", mn.idx, mn.proTx, idx)
+
+    def check_proreg_payload(self, dmn, json_tx):
+        assert "payload" in json_tx
+        def required_hash():
+            # null hash if funding collateral
+            return (0 if int(json_tx["txid"], 16) == dmn.collateral.hash
+                    else dmn.collateral.hash)
+        pl = json_tx["payload"]
+        assert_equal(pl["version"], 1)
+        assert_equal(pl["collateralHash"], "%064x" % required_hash())
+        assert_equal(pl["collateralIndex"], dmn.collateral.n)
+        assert_equal(pl["service"], dmn.ipport)
+        assert_equal(pl["ownerAddress"], dmn.owner)
+        assert_equal(pl["votingAddress"], dmn.voting)
+        assert_equal(pl["operatorAddress"], dmn.operator)
+        assert_equal(pl["payoutAddress"], dmn.payee)
 
 
 ### ------------------------------------------------------
