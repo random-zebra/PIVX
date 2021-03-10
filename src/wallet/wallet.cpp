@@ -1816,8 +1816,6 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate, b
     int ret = 0;
     int64_t nNow = GetTime();
 
-    const Consensus::Params& consensus = Params().GetConsensus();
-
     CBlockIndex* pindex = pindexStart;
     {
         LOCK(cs_main);
