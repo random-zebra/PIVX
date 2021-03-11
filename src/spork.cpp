@@ -205,15 +205,25 @@ void CSporkManager::ProcessGetSporks(CNode* pfrom, std::string& strCommand, CDat
     }
 }
 
+void CSporkManager::SetSpork(SporkId nSporkID, int64_t nValue)
+{
+    SetSpork(nSporkID, CSporkMessage(nSporkID, nValue, GetTime()));
+}
+
+void CSporkManager::SetSpork(SporkId nSporkID, const CSporkMessage& spork)
+{
+    LOCK(cs);
+    mapSporks[spork.GetHash()] = spork;
+    mapSporksActive[nSporkID] = spork;
+}
+
 bool CSporkManager::UpdateSpork(SporkId nSporkID, int64_t nValue)
 {
-    CSporkMessage spork = CSporkMessage(nSporkID, nValue, GetTime());
+    CSporkMessage spork(nSporkID, nValue, GetTime());
 
-    if(spork.Sign(strMasterPrivKey)){
+    if(spork.Sign(strMasterPrivKey)) {
+        SetSpork(nSporkID, spork);
         spork.Relay();
-        LOCK(cs);
-        mapSporks[spork.GetHash()] = spork;
-        mapSporksActive[nSporkID] = spork;
         return true;
     }
 
