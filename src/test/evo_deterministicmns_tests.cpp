@@ -190,7 +190,13 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
 
     CBlockIndex* chainTip = chainActive.Tip();
     int nHeight = chainTip->nHeight;
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V6_0, nHeight);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V6_0, nHeight+2);
+
+    // load empty list (last block before enforcement)
+    CreateAndProcessBlock({}, coinbaseKey);
+    chainTip = chainActive.Tip();
+    BOOST_CHECK_EQUAL(chainTip->nHeight, ++nHeight);
+    deterministicMNManager->UpdatedBlockTip(chainTip);
 
     int port = 1;
 

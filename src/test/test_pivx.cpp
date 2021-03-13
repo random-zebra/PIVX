@@ -131,6 +131,8 @@ TestChainSetup::TestChainSetup(int blockCount)
         CBlock b = CreateAndProcessBlock(noTxns, scriptPubKey);
         coinbaseTxns.push_back(*b.vtx[0]);
     }
+
+    deterministicMNManager->UpdatedBlockTip(chainActive.Tip());
 }
 
 //
