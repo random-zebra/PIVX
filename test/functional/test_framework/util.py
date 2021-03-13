@@ -645,7 +645,8 @@ def get_collateral_vout(json_tx):
 # owner and voting keys are created from controller node.
 # operator key and address are created, if operator_addr_and_key is None.
 def create_new_dmn(idx, controller, payout_addr, operator_addr_and_key):
-    ipport = "127.0.0.1:" + str(p2p_port(idx))
+    port = p2p_port(idx) if idx <= MAX_NODES else p2p_port(MAX_NODES) + (idx - MAX_NODES)
+    ipport = "127.0.0.1:" + str(port)
     owner_addr = controller.getnewaddress("mnowner-%d" % idx)
     voting_addr = controller.getnewaddress("mnvoting-%d" % idx)
     if operator_addr_and_key is None:

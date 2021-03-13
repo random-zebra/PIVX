@@ -1151,7 +1151,7 @@ class PivxTestFramework():
     """
     Create a ProReg tx, which has the collateral as one of its outputs
     """
-    def protx_register_fund(self, miner, controller, dmn, collateral_addr, lock=True, op_rew=None):
+    def protx_register_fund(self, miner, controller, dmn, collateral_addr, op_rew=None):
         # send to the owner the collateral tx + some dust for the ProReg and fee
         funding_txid = miner.sendtoaddress(collateral_addr, Decimal('101'))
         # confirm and verify reception
@@ -1276,7 +1276,7 @@ class PivxTestFramework():
         protxs = [x["proTxHash"] for x in mnlist]
         for mn in mns:
             if mn.proTx not in protxs:
-                raise Exception("ProTx for mn %d (%s) not found in the list of node %d", mn.idx, mn.proTx, idx)
+                raise Exception("ProTx for mn %d (%s) not found in the list of node %d" % (mn.idx, mn.proTx, idx))
 
     def check_proreg_payload(self, dmn, json_tx):
         assert "payload" in json_tx
