@@ -366,6 +366,11 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool f
     // been previously seen in a block.
     auto it = disconnectpool.queuedTx.get<insertion_order>().rbegin();
     while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
+        // if we are resurrecting a ProReg tx, we need to evict any special transaction that
+        // depends on it (which would not be accepted in the mempool, with the current chain)
+        if ((*it)->IsProRegTx()) {
+            mempool.removeProTxReferences((*it)->GetHash(), MemPoolRemovalReason::REORG);
+        }
         // ignore validation errors in resurrected transactions
         CValidationState stateDummy;
         if (!fAddToMempool || !AcceptToMemoryPool(mempool, stateDummy, *it, false, nullptr, true)) {
@@ -1766,8 +1771,7 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
     LogPrint(BCLog::BENCH, "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs]\n", nInputs - 1, 0.001 * (nTime2 - nTimeStart), nInputs <= 1 ? 0 : 0.001 * (nTime2 - nTimeStart) / (nInputs - 1), nTimeVerify * 0.000001);
 
     if (!ProcessSpecialTxsInBlock(block, pindex, state, fJustCheck)) {
-        return error("%s: Special tx processing failed for block %s with %s",
-                     __func__, pindex->GetBlockHash().ToString(), FormatStateMessage(state));
+        return error("%s: Special tx processing failed with %s", __func__, FormatStateMessage(state));
     }
     int64_t nTime3 = GetTimeMicros();
     nTimeProcessSpecial += nTime3 - nTime2;
