@@ -279,7 +279,8 @@ static OperationResult SignTransaction(CMutableTransaction& tx)
     return OperationResult(true);
 }
 
-static std::string SignAndSendSpecialTx(CMutableTransaction& tx, const ProRegPL& pl)
+template<typename SpecialTxPayload>
+static std::string SignAndSendSpecialTx(CMutableTransaction& tx, const SpecialTxPayload& pl)
 {
     EnsureWallet();
     EnsureWalletIsUnlocked();
@@ -716,6 +717,72 @@ UniValue protx_list(const JSONRPCRequest& request)
     return ret;
 }
 
+#ifdef ENABLE_WALLET
+UniValue protx_update_service(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 4) {
+        throw std::runtime_error(
+                "protx_update_service \"proTxHash\" \"ipAndPort\" (\"operatorPayoutAddress\" \"operatorKey\")\n"
+                "\nCreates and sends a ProUpServTx to the network. This will update the IP address\n"
+                "of a masternode, and/or the operator payout address.\n"
+                "If the IP is changed for a masternode that got PoSe-banned, the ProUpServTx will also revive this masternode.\n"
+                + HelpRequiringPassphrase() + "\n"
+                "\nArguments:\n"
+                + GetHelpString(1, proTxHash)
+                + GetHelpString(2, ipAndPort)
+                + GetHelpString(3, operatorPayoutAddress_update)
+                + GetHelpString(4, operatorKey) +
+                "\nResult:\n"
+                "\"txid\"                        (string) The transaction id.\n"
+                "\nExamples:\n"
+                + HelpExampleCli("protx_update_service", "...!TODO...")
+        );
+    }
+    CheckEvoUpgradeEnforcement();
+
+    EnsureWallet();
+    EnsureWalletIsUnlocked();
+    // Make sure the results are valid at least up to the most recent block
+    // the user could have gotten from another RPC command prior to now
+    pwalletMain->BlockUntilSyncedToCurrentChain();
+
+    ProUpServPL pl;
+    pl.nVersion = ProUpServPL::CURRENT_VERSION;
+    pl.proTxHash = ParseHashV(request.params[0], "proTxHash");
+
+    auto dmn = deterministicMNManager->GetListAtChainTip().GetMN(pl.proTxHash);
+    if (!dmn) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("masternode with hash %s not found", pl.proTxHash.ToString()));
+    }
+    const std::string& addrStr = request.params[1].get_str();
+    if (!Lookup(addrStr.c_str(), pl.addr, Params().GetDefaultPort(), false)) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("invalid network address %s", addrStr));
+    }
+    pl.scriptOperatorPayout = dmn->pdmnState->scriptOperatorPayout;
+    if (request.params.size() > 2) {
+        const std::string& strAddOpPayee = request.params[2].get_str();
+        if (!strAddOpPayee.empty()) {
+            if (dmn->nOperatorReward > 0) {
+                pl.scriptOperatorPayout = GetScriptForDestination(CTxDestination(ParsePubKeyIDFromAddress(strAddOpPayee)));
+            } else {
+                throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Operator reward is 0. Cannot set operator payout address"));
+            }
+        }
+    }
+
+    const CKey& operatorKey = request.params.size() > 3 ? ParsePrivKey(pwalletMain, request.params[3].get_str(), false)
+                                                        : GetKeyFromWallet(pwalletMain, dmn->pdmnState->keyIDOperator);
+
+    CMutableTransaction tx;
+    tx.nVersion = CTransaction::TxVersion::SAPLING;
+    tx.nType = CTransaction::TxType::PROUPSERV;
+
+    FundSpecialTx(pwalletMain, tx, pl);
+    SignSpecialTxPayloadByHash(tx, pl, operatorKey);
+
+    return SignAndSendSpecialTx(tx, pl);
+}
+#endif
 
 static const CRPCCommand commands[] =
 { //  category       name                              actor (function)
@@ -726,6 +793,7 @@ static const CRPCCommand commands[] =
     { "evo",         "protx_register_fund",            &protx_register_fund,    {}  },
     { "evo",         "protx_register_prepare",         &protx_register_prepare, {}  },
     { "evo",         "protx_register_submit",          &protx_register_submit,  {}  },
+    { "evo",         "protx_update_service",           &protx_register_submit,  {}  },
 #endif  //ENABLE_WALLET
 };
 
