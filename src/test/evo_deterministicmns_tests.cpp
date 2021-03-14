@@ -104,7 +104,7 @@ static CKey GetRandomKey()
 // Creates a ProRegTx.
 // - if optCollateralOut is nullopt, generate a new collateral in the first output of the tx
 // - otherwise reference *optCollateralOut as external collateral
-static CMutableTransaction CreateProRegTx(Optional<COutPoint> optCollateralOut, SimpleUTXOMap& utxos, int port, const CScript& scriptPayout, const CKey& coinbaseKey, const CKey& ownerKey, const CKey& operatorKey)
+static CMutableTransaction CreateProRegTx(Optional<COutPoint> optCollateralOut, SimpleUTXOMap& utxos, int port, const CScript& scriptPayout, const CKey& coinbaseKey, const CKey& ownerKey, const CKey& operatorKey, uint16_t operatorReward = 0)
 {
     ProRegPL pl;
     pl.collateralOutpoint = (optCollateralOut ? *optCollateralOut : COutPoint(UINT256_ZERO, 0));
@@ -113,6 +113,7 @@ static CMutableTransaction CreateProRegTx(Optional<COutPoint> optCollateralOut, 
     pl.keyIDOperator = operatorKey.GetPubKey().GetID();
     pl.keyIDVoting = ownerKey.GetPubKey().GetID();
     pl.scriptPayout = scriptPayout;
+    pl.nOperatorReward = operatorReward;
 
     CMutableTransaction tx;
     tx.nVersion = CTransaction::TxVersion::SAPLING;
@@ -122,6 +123,29 @@ static CMutableTransaction CreateProRegTx(Optional<COutPoint> optCollateralOut, 
                     (optCollateralOut ? 0 : Params().GetConsensus().nMNCollateralAmt));
 
     pl.inputsHash = CalcTxInputsHash(tx);
+    SetTxPayload(tx, pl);
+    SignTransaction(tx, coinbaseKey);
+
+    return tx;
+}
+
+static CMutableTransaction CreateProUpServTx(SimpleUTXOMap& utxos, const uint256& proTxHash, const CKey& operatorKey, int port, const CScript& scriptOperatorPayout, const CKey& coinbaseKey)
+{
+    CAmount change;
+    auto inputs = SelectUTXOs(utxos, 1 * COIN, change);
+
+    ProUpServPL pl;
+    pl.proTxHash = proTxHash;
+    pl.addr = LookupNumeric("1.1.1.1", port);
+    pl.scriptOperatorPayout = scriptOperatorPayout;
+
+    CMutableTransaction tx;
+    tx.nVersion = CTransaction::TxVersion::SAPLING;
+    tx.nType = CTransaction::TxType::PROUPSERV;
+    const CScript& s = GetScriptForDestination(coinbaseKey.GetPubKey().GetID());
+    FundTransaction(tx, utxos, s, s, 1 * COIN);
+    pl.inputsHash = CalcTxInputsHash(tx);
+    BOOST_ASSERT(CHashSigner::SignHash(::SerializeHash(pl), operatorKey, pl.vchSig));
     SetTxPayload(tx, pl);
     SignTransaction(tx, coinbaseKey);
 
@@ -141,6 +165,17 @@ static CMutableTransaction MalleateProTxPayout(const CMutableTransaction& tx)
     ProPL pl;
     GetTxPayload(tx, pl);
     pl.scriptPayout = GenerateRandomAddress();
+    CMutableTransaction tx2 = tx;
+    SetTxPayload(tx2, pl);
+    return tx2;
+}
+
+static CMutableTransaction MalleateProUpServTx(const CMutableTransaction& tx)
+{
+    ProUpServPL pl;
+    GetTxPayload(tx, pl);
+    pl.addr = LookupNumeric("1.1.1.1", InsecureRandRange(2000));
+    pl.scriptOperatorPayout = GenerateRandomAddress();
     CMutableTransaction tx2 = tx;
     SetTxPayload(tx2, pl);
     return tx2;
@@ -377,6 +412,108 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
     }
     // 30 blocks, 15 masternodes. Must have been paid exactly 2 times each.
     CheckPayments(mapPayments, 15, 2);
+
+    // ProUpServ: change masternode IP
+    {
+        const uint256& proTx = dmnHashes[InsecureRandRange(dmnHashes.size())];  // pick one at random
+        auto tx = CreateProUpServTx(utxos, proTx, operatorKeys.at(proTx), 1000, CScript(), coinbaseKey);
+
+        CValidationState dummyState;
+        BOOST_CHECK(CheckProUpServTx(tx, chainTip, dummyState));
+        BOOST_CHECK(CheckTransactionSignature(tx));
+        // also verify that payloads are not malleable after they have been signed
+        auto tx2 = MalleateProUpServTx(tx);
+        BOOST_CHECK(!CheckProUpServTx(tx2, chainTip, dummyState));
+
+        CreateAndProcessBlock({tx}, coinbaseKey);
+        chainTip = chainActive.Tip();
+        BOOST_CHECK_EQUAL(chainTip->nHeight, nHeight + 1);
+        deterministicMNManager->UpdatedBlockTip(chainTip);
+
+        auto dmn = deterministicMNManager->GetListAtChainTip().GetMN(proTx);
+        BOOST_ASSERT(dmn != nullptr);
+        BOOST_CHECK_EQUAL(dmn->pdmnState->addr.GetPort(), 1000);
+
+        nHeight++;
+    }
+
+    // ProUpServ: Try to change the IP of a masternode to the one of another registered masternode
+    {
+        int randomIdx = InsecureRandRange(dmnHashes.size());
+        int randomIdx2 = 0;
+        do { randomIdx2 = InsecureRandRange(dmnHashes.size()); } while (randomIdx2 == randomIdx);
+        const uint256& proTx = dmnHashes[randomIdx];    // mn to update
+        int new_port = deterministicMNManager->GetListAtChainTip().GetMN(dmnHashes[randomIdx2])->pdmnState->addr.GetPort();
+
+        auto tx = CreateProUpServTx(utxos, proTx, operatorKeys.at(proTx), new_port, CScript(), coinbaseKey);
+
+        CValidationState state;
+        BOOST_CHECK(!CheckProUpServTx(tx, chainTip, state));
+        BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-addr");
+    }
+
+    // ProUpServ: Try to change the IP of a masternode that doesn't exist
+    {
+        const CKey& operatorKey = GetRandomKey();
+        auto tx = CreateProUpServTx(utxos, GetRandHash(), operatorKey, port, CScript(), coinbaseKey);
+
+        CValidationState state;
+        BOOST_CHECK(!CheckProUpServTx(tx, chainTip, state));
+        BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-hash");
+    }
+
+    // ProUpServ: Change masternode operator payout.
+    {
+        // first create a ProRegTx with 5% reward for the operator, and mine it
+        const CKey& ownerKey = GetRandomKey();
+        const CKey& operatorKey = GetRandomKey();
+        auto tx = CreateProRegTx(nullopt, utxos, port++, GenerateRandomAddress(), coinbaseKey, ownerKey, operatorKey, 500);
+        const uint256& txid = tx.GetHash();
+        CreateAndProcessBlock({tx}, coinbaseKey);
+        chainTip = chainActive.Tip();
+        BOOST_CHECK_EQUAL(chainTip->nHeight, ++nHeight);
+        deterministicMNManager->UpdatedBlockTip(chainTip);
+        BOOST_CHECK(deterministicMNManager->GetListAtChainTip().HasMN(txid));
+        auto dmn = deterministicMNManager->GetListAtChainTip().GetMN(txid);
+        BOOST_CHECK(dmn->pdmnState->scriptOperatorPayout.empty());
+        BOOST_CHECK_EQUAL(dmn->nOperatorReward, 500);
+
+        // then send the ProUpServTx and check the operator payee
+        const CScript& operatorPayee = GenerateRandomAddress();
+        auto tx2 = CreateProUpServTx(utxos, txid, operatorKey, (port-1), operatorPayee, coinbaseKey);
+        CreateAndProcessBlock({tx2}, coinbaseKey);
+        chainTip = chainActive.Tip();
+        BOOST_CHECK_EQUAL(chainTip->nHeight, ++nHeight);
+        deterministicMNManager->UpdatedBlockTip(chainTip);
+        dmn = deterministicMNManager->GetListAtChainTip().GetMN(txid);
+        BOOST_ASSERT(dmn != nullptr);
+        BOOST_CHECK(dmn->pdmnState->scriptOperatorPayout == operatorPayee);
+    }
+    // ProUpServ: Try to change masternode operator payout when the operator reward is zero
+    {
+        const CScript& operatorPayee = GenerateRandomAddress();
+        auto tx = CreateProUpServTx(utxos, dmnHashes[0], operatorKeys.at(dmnHashes[0]), 1, operatorPayee, coinbaseKey);
+        CValidationState state;
+        BOOST_CHECK(!CheckProUpServTx(tx, chainTip, state));
+        BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-operator-payee");
+    }
+    // Block including
+    // - (1) ProRegTx registering a masternode
+    // - (2) ProUpServTx changing the IP of another masternode, to the one used by (1)
+    {
+        auto tx1 = CreateProRegTx(nullopt, utxos, port++, GenerateRandomAddress(), coinbaseKey, GetRandomKey(), GetRandomKey());
+        const uint256& proTx = dmnHashes[InsecureRandRange(dmnHashes.size())];    // pick one at random
+        auto tx2 = CreateProUpServTx(utxos, proTx, operatorKeys.at(proTx), (port-1), CScript(), coinbaseKey);
+        CBlock block = CreateBlock({tx1, tx2}, coinbaseKey);
+        CBlockIndex indexFake(block);
+        indexFake.nHeight = nHeight;
+        indexFake.pprev = chainTip;
+        CValidationState state;
+        BOOST_CHECK(!ProcessSpecialTxsInBlock(block, &indexFake, state, true));
+        BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-addr");
+        ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr);
+        BOOST_CHECK_EQUAL(chainActive.Height(), nHeight);   // bad block not connected
+    }
 
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V6_0, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 }
