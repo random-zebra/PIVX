@@ -51,7 +51,18 @@ static ProRegPL GetRandomProRegPayload()
     return pl;
 }
 
-BOOST_AUTO_TEST_CASE(special_tx_validation_test)
+static ProUpServPL GetRandomProUpServPayload()
+{
+    ProUpServPL pl;
+    pl.proTxHash = GetRandHash();
+    BOOST_CHECK(Lookup("127.0.0.1:51472", pl.addr, Params().GetDefaultPort(), false));
+    RandomScript(pl.scriptOperatorPayout);
+    pl.inputsHash = GetRandHash();
+    pl.vchSig = InsecureRandBytes(63);
+    return pl;
+}
+
+BOOST_AUTO_TEST_CASE(protx_validation_test)
 {
     CMutableTransaction mtx;
     CValidationState state;
@@ -89,7 +100,7 @@ BOOST_AUTO_TEST_CASE(special_tx_validation_test)
     BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-payload");
 }
 
-BOOST_AUTO_TEST_CASE(providertx_setpayload_test)
+BOOST_AUTO_TEST_CASE(proreg_setpayload_test)
 {
     const ProRegPL& pl = GetRandomProRegPayload();
 
@@ -109,7 +120,22 @@ BOOST_AUTO_TEST_CASE(providertx_setpayload_test)
     BOOST_CHECK(pl.vchSig == pl2.vchSig);
 }
 
-BOOST_AUTO_TEST_CASE(providertx_checkstringsig_test)
+BOOST_AUTO_TEST_CASE(proupserv_setpayload_test)
+{
+    const ProUpServPL& pl = GetRandomProUpServPayload();
+
+    CMutableTransaction mtx;
+    SetTxPayload(mtx, pl);
+    ProUpServPL pl2;
+    BOOST_CHECK(GetTxPayload(mtx, pl2));
+    BOOST_CHECK(pl.proTxHash == pl2.proTxHash);
+    BOOST_CHECK(pl.addr  == pl2.addr);
+    BOOST_CHECK(pl.scriptOperatorPayout == pl2.scriptOperatorPayout);
+    BOOST_CHECK(pl.inputsHash == pl2.inputsHash);
+    BOOST_CHECK(pl.vchSig == pl2.vchSig);
+}
+
+BOOST_AUTO_TEST_CASE(proreg_checkstringsig_test)
 {
     ProRegPL pl = GetRandomProRegPayload();
     pl.vchSig.clear();
