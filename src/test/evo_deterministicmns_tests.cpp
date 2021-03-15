@@ -250,7 +250,7 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         operatorKeys.emplace(txid, operatorKey);
 
         CValidationState dummyState;
-        BOOST_CHECK(CheckProRegTx(tx, chainTip, dummyState));
+        BOOST_CHECK_MESSAGE(CheckProRegTx(tx, chainTip, dummyState), dummyState.GetRejectReason());
         BOOST_CHECK(CheckTransactionSignature(tx));
 
         // also verify that payloads are not malleable after they have been signed
@@ -259,9 +259,9 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         // into account
         auto tx2 = MalleateProTxPayout<ProRegPL>(tx);
         // Technically, the payload is still valid...
-        BOOST_CHECK(CheckProRegTx(tx2, chainTip, dummyState));
+        BOOST_CHECK_MESSAGE(CheckProRegTx(tx2, chainTip, dummyState), dummyState.GetRejectReason());
         // But the signature should not verify anymore
-        BOOST_CHECK(!CheckTransactionSignature(tx2));
+        BOOST_CHECK_MESSAGE(!CheckTransactionSignature(tx2), "Malleated ProReg accepted");
 
         CreateAndProcessBlock({tx}, coinbaseKey);
         chainTip = chainActive.Tip();
@@ -300,7 +300,7 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         const CKey& ownerKey = ownerKeys.at(dmnHashes[InsecureRandRange(dmnHashes.size())]);
         auto tx = CreateProRegTx(nullopt, utxos, port, GenerateRandomAddress(), coinbaseKey, ownerKey, GetRandomKey());
         CValidationState state;
-        BOOST_CHECK(!CheckProRegTx(tx, chainTip, state));
+        BOOST_CHECK_MESSAGE(!CheckProRegTx(tx, chainTip, state), "Accepted ProReg with duplicate owner");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-owner-key");
     }
     // Try to register used operator key
@@ -308,14 +308,14 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         const CKey& operatorKey = operatorKeys.at(dmnHashes[InsecureRandRange(dmnHashes.size())]);
         auto tx = CreateProRegTx(nullopt, utxos, port, GenerateRandomAddress(), coinbaseKey, GetRandomKey(), operatorKey);
         CValidationState state;
-        BOOST_CHECK(!CheckProRegTx(tx, chainTip, state));
+        BOOST_CHECK_MESSAGE(!CheckProRegTx(tx, chainTip, state), "Accepted ProReg with duplicate operator");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-operator-key");
     }
     // Try to register used IP address
     {
         auto tx = CreateProRegTx(nullopt, utxos, 1 + InsecureRandRange(port-1), GenerateRandomAddress(), coinbaseKey, GetRandomKey(), GetRandomKey());
         CValidationState state;
-        BOOST_CHECK(!CheckProRegTx(tx, chainTip, state));
+        BOOST_CHECK_MESSAGE(!CheckProRegTx(tx, chainTip, state), "Accepted ProReg with IP address");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-IP-address");
     }
     // Block with two ProReg txes using same owner key
@@ -330,7 +330,8 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         indexFake.nHeight = nHeight;
         indexFake.pprev = chainTip;
         CValidationState state;
-        BOOST_CHECK(!ProcessSpecialTxsInBlock(block, &indexFake, state, true));
+        BOOST_CHECK_MESSAGE(!ProcessSpecialTxsInBlock(block, &indexFake, state, true),
+                            "Accepted block with duplicate owner key in ProReg txes");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-owner-key");
         ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr);
         BOOST_CHECK_EQUAL(chainActive.Height(), nHeight);   // bad block not connected
@@ -347,7 +348,8 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         indexFake.nHeight = nHeight;
         indexFake.pprev = chainTip;
         CValidationState state;
-        BOOST_CHECK(!ProcessSpecialTxsInBlock(block, &indexFake, state, true));
+        BOOST_CHECK_MESSAGE(!ProcessSpecialTxsInBlock(block, &indexFake, state, true),
+                            "Accepted block with duplicate operator key in ProReg txes");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-operator-key");
         ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr);
         BOOST_CHECK_EQUAL(chainActive.Height(), nHeight);   // bad block not connected
@@ -361,7 +363,8 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         indexFake.nHeight = nHeight;
         indexFake.pprev = chainTip;
         CValidationState state;
-        BOOST_CHECK(!ProcessSpecialTxsInBlock(block, &indexFake, state, true));
+        BOOST_CHECK_MESSAGE(!ProcessSpecialTxsInBlock(block, &indexFake, state, true),
+                            "Accepted block with duplicate IP address in ProReg txes");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-IP-address");
         ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr);
         BOOST_CHECK_EQUAL(chainActive.Height(), nHeight);   // bad block not connected
@@ -380,7 +383,7 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
             operatorKeys.emplace(txid, operatorKey);
 
             CValidationState dummyState;
-            BOOST_CHECK(CheckProRegTx(tx, chainActive.Tip(), dummyState));
+            BOOST_CHECK_MESSAGE(CheckProRegTx(tx, chainActive.Tip(), dummyState), dummyState.GetRejectReason());
             BOOST_CHECK(CheckTransactionSignature(tx));
             txns.emplace_back(tx);
         }
@@ -419,11 +422,11 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         auto tx = CreateProUpServTx(utxos, proTx, operatorKeys.at(proTx), 1000, CScript(), coinbaseKey);
 
         CValidationState dummyState;
-        BOOST_CHECK(CheckProUpServTx(tx, chainTip, dummyState));
+        BOOST_CHECK_MESSAGE(CheckProUpServTx(tx, chainTip, dummyState), dummyState.GetRejectReason());
         BOOST_CHECK(CheckTransactionSignature(tx));
         // also verify that payloads are not malleable after they have been signed
         auto tx2 = MalleateProUpServTx(tx);
-        BOOST_CHECK(!CheckProUpServTx(tx2, chainTip, dummyState));
+        BOOST_CHECK_MESSAGE(!CheckProUpServTx(tx2, chainTip, dummyState), "Malleated ProUpServ accepted");
 
         CreateAndProcessBlock({tx}, coinbaseKey);
         chainTip = chainActive.Tip();
@@ -448,7 +451,7 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         auto tx = CreateProUpServTx(utxos, proTx, operatorKeys.at(proTx), new_port, CScript(), coinbaseKey);
 
         CValidationState state;
-        BOOST_CHECK(!CheckProUpServTx(tx, chainTip, state));
+        BOOST_CHECK_MESSAGE(!CheckProUpServTx(tx, chainTip, state), "Accepted ProUpServ with duplicate IP address");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-addr");
     }
 
@@ -458,7 +461,7 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         auto tx = CreateProUpServTx(utxos, GetRandHash(), operatorKey, port, CScript(), coinbaseKey);
 
         CValidationState state;
-        BOOST_CHECK(!CheckProUpServTx(tx, chainTip, state));
+        BOOST_CHECK_MESSAGE(!CheckProUpServTx(tx, chainTip, state), "Accepted ProUpServ with invalid protx hash");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-hash");
     }
 
@@ -494,7 +497,7 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         const CScript& operatorPayee = GenerateRandomAddress();
         auto tx = CreateProUpServTx(utxos, dmnHashes[0], operatorKeys.at(dmnHashes[0]), 1, operatorPayee, coinbaseKey);
         CValidationState state;
-        BOOST_CHECK(!CheckProUpServTx(tx, chainTip, state));
+        BOOST_CHECK_MESSAGE(!CheckProUpServTx(tx, chainTip, state), "Accepted ProUpServ with invalid operator payee change");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-operator-payee");
     }
     // Block including
@@ -509,7 +512,8 @@ BOOST_FIXTURE_TEST_CASE(dip3_protx, TestChain400Setup)
         indexFake.nHeight = nHeight;
         indexFake.pprev = chainTip;
         CValidationState state;
-        BOOST_CHECK(!ProcessSpecialTxsInBlock(block, &indexFake, state, true));
+        BOOST_CHECK_MESSAGE(!ProcessSpecialTxsInBlock(block, &indexFake, state, true),
+                            "Accepted block with duplicate IP address in ProReg+ProUpServ txes");
         BOOST_CHECK_EQUAL(state.GetRejectReason(), "bad-protx-dup-addr");
         ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr);
         BOOST_CHECK_EQUAL(chainActive.Height(), nHeight);   // bad block not connected
