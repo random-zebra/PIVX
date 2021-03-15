@@ -165,7 +165,9 @@ bool CheckProRegTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CValid
 
     // don't allow reuse of collateral key for other keys (don't allow people to put the collateral key onto an online server)
     // this check applies to internal and external collateral, but internal collaterals are not necessarely a P2PKH
-    if (collateralTxDest == CTxDestination(pl.keyIDOwner) || collateralTxDest == CTxDestination(pl.keyIDVoting)) {
+    if (collateralTxDest == CTxDestination(pl.keyIDOwner) ||
+            collateralTxDest == CTxDestination(pl.keyIDVoting) ||
+            collateralTxDest == CTxDestination(pl.keyIDOperator)) {
         return state.DoS(10, false, REJECT_INVALID, "bad-protx-collateral-reuse");
     }
 
@@ -336,6 +338,117 @@ void ProUpServPL::ToJson(UniValue& obj) const
     if (ExtractDestination(scriptOperatorPayout, dest)) {
         obj.pushKV("operatorPayoutAddress", EncodeDestination(dest));
     }
+    obj.pushKV("inputsHash", inputsHash.ToString());
+}
+
+// Provider Update Registrar Payload
+
+bool CheckProUpRegTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CValidationState& state)
+{
+    assert(tx.nType == CTransaction::TxType::PROUPREG);
+
+    ProUpRegPL pl;
+    if (!GetTxPayload(tx, pl)) {
+        return state.DoS(100, false, REJECT_INVALID, "bad-protx-payload");
+    }
+
+    if (pl.nVersion == 0 || pl.nVersion > ProUpRegPL::CURRENT_VERSION) {
+        return state.DoS(100, false, REJECT_INVALID, "bad-protx-version");
+    }
+    if (pl.nMode != 0) {
+        return state.DoS(100, false, REJECT_INVALID, "bad-protx-mode");
+    }
+
+    if (pl.keyIDOperator.IsNull()) {
+        return state.DoS(10, false, REJECT_INVALID, "bad-protx-operator-key-null");
+    }
+    if (pl.keyIDVoting.IsNull()) {
+        return state.DoS(10, false, REJECT_INVALID, "bad-protx-voting-key-null");
+    }
+    // !TODO: enable other scripts
+    if (!pl.scriptPayout.IsPayToPublicKeyHash()) {
+        return state.DoS(10, false, REJECT_INVALID, "bad-protx-payee");
+    }
+
+    CTxDestination payoutDest;
+    if (!ExtractDestination(pl.scriptPayout, payoutDest)) {
+        // should not happen as we checked script types before
+        return state.DoS(10, false, REJECT_INVALID, "bad-protx-payee-dest");
+    }
+
+    if (pindexPrev) {
+        auto mnList = deterministicMNManager->GetListForBlock(pindexPrev);
+        auto dmn = mnList.GetMN(pl.proTxHash);
+        if (!dmn) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-protx-hash");
+        }
+
+        // don't allow reuse of payee key for other keys (don't allow people to put the payee key onto an online server)
+        if (payoutDest == CTxDestination(dmn->pdmnState->keyIDOwner) ||
+                payoutDest == CTxDestination(pl.keyIDVoting) ||
+                payoutDest == CTxDestination(pl.keyIDOperator)) {
+            return state.DoS(10, false, REJECT_INVALID, "bad-protx-payee-reuse");
+        }
+
+        Coin coin;
+        if (!GetUTXOCoin(dmn->collateralOutpoint, coin)) {
+            // this should never happen (there would be no dmn otherwise)
+            return state.DoS(100, false, REJECT_INVALID, "bad-protx-collateral");
+        }
+
+        // don't allow reuse of collateral key for other keys (don't allow people to put the payee key onto an online server)
+        CTxDestination collateralTxDest;
+        if (!ExtractDestination(coin.out.scriptPubKey, collateralTxDest)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-protx-collateral-dest");
+        }
+        if (collateralTxDest == CTxDestination(dmn->pdmnState->keyIDOwner) ||
+                collateralTxDest == CTxDestination(pl.keyIDVoting) ||
+                collateralTxDest == CTxDestination(pl.keyIDOperator)) {
+            return state.DoS(10, false, REJECT_INVALID, "bad-protx-collateral-reuse");
+        }
+
+        if (mnList.HasUniqueProperty(pl.keyIDOperator)) {
+            auto otherDmn = mnList.GetUniquePropertyMN(pl.keyIDOperator);
+            if (pl.proTxHash != otherDmn->proTxHash) {
+                return state.DoS(10, false, REJECT_DUPLICATE, "bad-protx-dup-key");
+            }
+        }
+
+        if (!CheckInputsHash(tx, pl, state)) {
+            // pass the state returned by the function above
+            return false;
+        }
+        if (!CheckHashSig(pl, dmn->pdmnState->keyIDOwner, state)) {
+            // pass the state returned by the function above
+            return false;
+        }
+
+    }
+
+    return true;
+}
+
+std::string ProUpRegPL::ToString() const
+{
+    CTxDestination dest;
+    std::string payee = ExtractDestination(scriptPayout, dest) ?
+                        EncodeDestination(dest) : "unknown";
+    return strprintf("ProUpRegPL(nVersion=%d, proTxHash=%s, operatorAddress=%s, votingAddress=%s, payoutAddress=%s)",
+        nVersion, proTxHash.ToString(), EncodeDestination(keyIDOperator), EncodeDestination(keyIDVoting), payee);
+}
+
+void ProUpRegPL::ToJson(UniValue& obj) const
+{
+    obj.clear();
+    obj.setObject();
+    obj.pushKV("version", nVersion);
+    obj.pushKV("proTxHash", proTxHash.ToString());
+    obj.pushKV("votingAddress", EncodeDestination(keyIDVoting));
+    CTxDestination dest;
+    if (ExtractDestination(scriptPayout, dest)) {
+        obj.pushKV("payoutAddress", EncodeDestination(dest));
+    }
+    obj.pushKV("operatorAddress", EncodeDestination(keyIDOperator));
     obj.pushKV("inputsHash", inputsHash.ToString());
 }
 
