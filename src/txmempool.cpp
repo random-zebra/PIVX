@@ -402,6 +402,15 @@ void CTxMemPool::addUncheckedSpecialTx(const CTransaction& tx)
             break;
         }
 
+        case CTransaction::TxType::PROUPREG: {
+            ProUpRegPL pl;
+            bool ok = GetTxPayload(tx, pl);
+            assert(ok);
+            mapProTxRefs.emplace(pl.proTxHash, txid);
+            mapProTxPubKeyIDs.emplace(pl.keyIDOperator, tx.GetHash());
+            break;
+        }
+
     }
 }
 
@@ -508,6 +517,15 @@ void CTxMemPool::removeUncheckedSpecialTx(const CTransaction& tx)
             assert(ok);
             eraseProTxRef(pl.proTxHash, txid);
             mapProTxAddresses.erase(pl.addr);
+            break;
+        }
+
+        case CTransaction::TxType::PROUPREG: {
+            ProUpRegPL pl;
+            bool ok = GetTxPayload(tx, pl);
+            assert(ok);
+            eraseProTxRef(pl.proTxHash, txid);
+            mapProTxPubKeyIDs.erase(pl.keyIDOperator);
             break;
         }
 
@@ -782,6 +800,16 @@ void CTxMemPool::removeProTxConflicts(const CTransaction &tx)
                     removeRecursive(mapTx.find(conflictHash)->GetTx(), MemPoolRemovalReason::CONFLICT);
                 }
             }
+            break;
+        }
+
+        case CTransaction::TxType::PROUPREG: {
+            ProUpRegPL pl;
+            if (!GetTxPayload(tx, pl)) {
+                LogPrint(BCLog::MEMPOOL, "%s: ERROR: Invalid transaction payload, tx: %s", __func__, tx.ToString());
+                return;
+            }
+            removeProTxPubKeyConflicts(tx, pl.keyIDOperator);
             break;
         }
 
@@ -1139,6 +1167,16 @@ bool CTxMemPool::existsProviderTxConflict(const CTransaction &tx) const
             }
             auto it = mapProTxAddresses.find(pl.addr);
             return it != mapProTxAddresses.end() && it->second != pl.proTxHash;
+        }
+
+        case CTransaction::TxType::PROUPREG: {
+            ProUpRegPL pl;
+            if (!GetTxPayload(tx, pl)) {
+                LogPrint(BCLog::MEMPOOL, "%s: ERROR: Invalid transaction payload, tx: %s", __func__, tx.ToString());
+                return true; // i.e. can't decode payload == conflict
+            }
+            auto it = mapProTxPubKeyIDs.find(pl.keyIDOperator);
+            return it != mapProTxPubKeyIDs.end() && it->second != pl.proTxHash;
         }
 
     }
