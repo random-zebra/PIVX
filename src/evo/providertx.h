@@ -51,9 +51,9 @@ public:
         READWRITE(keyIDOwner);
         READWRITE(keyIDOperator);
         READWRITE(keyIDVoting);
-        READWRITE(*(CScriptBase*)(&scriptPayout));
+        READWRITE(scriptPayout);
         READWRITE(nOperatorReward);
-        READWRITE(*(CScriptBase*)(&scriptOperatorPayout));
+        READWRITE(scriptOperatorPayout);
         READWRITE(inputsHash);
         if (!(s.GetType() & SER_GETHASH)) {
             READWRITE(vchSig);
