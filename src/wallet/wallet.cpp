@@ -2457,7 +2457,7 @@ CWallet::OutputAvailabilityResult CWallet::CheckOutputAvailability(
     if (mine == ISMINE_WATCH_ONLY && coinControl && !coinControl->fAllowWatchOnly) return res;
 
     // Skip locked utxo
-    if (!fIncludeLocked && IsLockedCoin(wtxid, outIndex) && nCoinType != ONLY_10000) return res;
+    if (!fIncludeLocked && IsLockedCoin(wtxid, outIndex)) return res;
 
     // Check if we should include zero value utxo
     if (output.nValue <= 0) return res;
