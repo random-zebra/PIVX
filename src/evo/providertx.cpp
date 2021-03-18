@@ -347,6 +347,10 @@ bool CheckProUpRegTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CVal
 {
     assert(tx.nType == CTransaction::TxType::PROUPREG);
 
+    if (!deterministicMNManager->LegacyMNObsolete(pindexPrev->nHeight + 1)) {
+        return state.DoS(10, false, REJECT_INVALID, "spork-21-inactive");
+    }
+
     ProUpRegPL pl;
     if (!GetTxPayload(tx, pl)) {
         return state.DoS(100, false, REJECT_INVALID, "bad-protx-payload");
