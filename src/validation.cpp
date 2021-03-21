@@ -336,8 +336,7 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool f
     while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
         // ignore validation errors in resurrected transactions
         CValidationState stateDummy;
-        if (!fAddToMempool || (*it)->IsCoinBase() || (*it)->IsCoinStake() ||
-                !AcceptToMemoryPool(mempool, stateDummy, *it, false, nullptr, true)) {
+        if (!fAddToMempool || !AcceptToMemoryPool(mempool, stateDummy, *it, false, nullptr, true)) {
             // If the transaction doesn't make it in to the mempool, remove any
             // transactions that depend on it (which would now be orphans).
             mempool.removeRecursive(**it, MemPoolRemovalReason::REORG);
@@ -1939,7 +1938,9 @@ bool static DisconnectTip(CValidationState& state, const CChainParams& chainpara
     if (disconnectpool) {
         // Save transactions to re-add to mempool at end of reorg
         for (auto it = block.vtx.rbegin(); it != block.vtx.rend(); ++it) {
-            disconnectpool->addTransaction(*it);
+            if (!(*it)->IsCoinBase() && !(*it)->IsCoinStake()) {
+                disconnectpool->addTransaction(*it);
+            }
         }
         while (disconnectpool->DynamicMemoryUsage() > MAX_DISCONNECTED_TX_POOL_SIZE * 1000) {
             // Drop the earliest entry, and remove its children from the mempool.
