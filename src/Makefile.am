@@ -180,6 +180,7 @@ BITCOIN_CORE_H = \
   core_io.h \
   cuckoocache.h \
   crypter.h \
+  ctpl.h \
   cyclingvector.h \
   pairresult.h \
   addressbook.h \
