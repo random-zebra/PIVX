@@ -22,7 +22,7 @@
 #include "checkpoints.h"
 #include "compat/sanity.h"
 #include "consensus/upgrades.h"
-#include "crypto/bls.h"
+#include "bls/bls.h"
 #include "fs.h"
 #include "httpserver.h"
 #include "httprpc.h"

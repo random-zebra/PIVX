@@ -420,8 +420,6 @@ crypto_libbitcoin_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIC_FLAGS)
 crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/aes.cpp \
   crypto/aes.h \
-  crypto/bls.cpp \
-  crypto/bls.h \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
@@ -537,10 +535,10 @@ libbitcoin_util_a_SOURCES = \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
   compat/strnlen.cpp \
-  crypto/bls_ies.cpp \
-  crypto/bls_ies.h \
-  crypto/bls_worker.cpp \
-  crypto/bls_worker.h \
+  bls/bls_ies.cpp \
+  bls/bls_ies.h \
+  bls/bls_worker.cpp \
+  bls/bls_worker.h \
   fs.cpp \
   interfaces/handler.cpp \
   logging.cpp \
@@ -682,6 +680,8 @@ include_HEADERS = script/bitcoinconsensus.h
 libbitcoinconsensus_la_SOURCES = \
   arith_uint256.cpp \
   primitives/transaction.cpp \
+  bls/bls.cpp \
+  bls/bls.h \
   crypto/hmac_sha512.cpp \
   crypto/scrypt.cpp \
   crypto/sha1.cpp \

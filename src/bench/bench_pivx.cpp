@@ -5,7 +5,7 @@
 
 #include "bench.h"
 
-#include "crypto/bls.h"
+#include "bls/bls.h"
 #include "key.h"
 #include "random.h"
 #include "util.h"
