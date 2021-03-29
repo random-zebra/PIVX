@@ -156,6 +156,9 @@ BITCOIN_CORE_H = \
   bip38.h \
   bloom.h \
   blocksignature.h \
+  bls/bls.h \
+  bls/bls_ies.h \
+  bls/bls_worker.h \
   chain.h \
   chainparams.h \
   chainparamsbase.h \
@@ -432,8 +435,6 @@ crypto_libbitcoin_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIC_FLAGS)
 crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/aes.cpp \
   crypto/aes.h \
-  crypto/bls.cpp \
-  crypto/bls.h \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
@@ -498,6 +499,9 @@ libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_SOURCES = \
   base58.cpp \
   bip38.cpp \
+  bls/bls.cpp \
+  bls/bls_ies.cpp \
+  bls/bls_worker.cpp \
   chainparams.cpp \
   consensus/upgrades.cpp \
   coins.cpp \
@@ -542,10 +546,6 @@ libbitcoin_util_a_SOURCES = \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
   compat/strnlen.cpp \
-  crypto/bls_ies.cpp \
-  crypto/bls_ies.h \
-  crypto/bls_worker.cpp \
-  crypto/bls_worker.h \
   fs.cpp \
   interfaces/handler.cpp \
   logging.cpp \

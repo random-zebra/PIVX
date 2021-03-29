@@ -6,7 +6,7 @@
 #include "bls_worker.h"
 #include "hash.h"
 #include "serialize.h"
-#include "util/system.h"
+#include "util/threadnames.h"
 
 
 template <typename T>
