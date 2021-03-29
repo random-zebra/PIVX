@@ -7,6 +7,7 @@
 
 #include "crypto/bls.h"
 #include "key.h"
+#include "random.h"
 #include "util.h"
 
 void CleanupBLSTests();
@@ -15,6 +16,7 @@ void CleanupBLSDkgTests();
 int main(int argc, char** argv)
 {
     ECC_Start();
+    RandomInit();
     BLSInit();
     SetupEnvironment();
     g_logger->m_print_to_file = false; // don't want to write to debug.log file
