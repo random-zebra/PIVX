@@ -393,13 +393,13 @@ public:
     {
         strNetworkID = "regtest";
 
-        genesis = CreateGenesisBlock(1454124731, 2402015, 0x1e0ffff0, 1, 250 * COIN);
+        genesis = CreateGenesisBlock(1454124731, 1, 0x207fffff, 1, 250 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x0000041e482b9b9691d98eefb48473405c0b8ec31b76df3797c74a78680ef818"));
+        assert(consensus.hashGenesisBlock == uint256S("0x7445589c4c8e52b105247b13373e5ee325856aa05d53f429e59ea46b7149ae3f"));
         assert(genesis.hashMerkleRoot == uint256S("0x1b2ef6e2f28be914103a277377ae7729dcd125dfeb8bf97bd5964ba72b6dc39b"));
 
         consensus.fPowAllowMinDifficultyBlocks = true;
-        consensus.powLimit   = ~UINT256_ZERO >> 20;   // PIVX starting difficulty is 1 / 2^12
+        consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.posLimitV1 = ~UINT256_ZERO >> 24;
         consensus.posLimitV2 = ~UINT256_ZERO >> 20;
         consensus.nBudgetCycleBlocks = 144;         // approx 10 cycles per day
