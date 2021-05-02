@@ -1649,10 +1649,9 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
             }
 
         } else if (!tx.IsCoinBase()) {
-            if (!view.HaveInputs(tx))
-                return state.DoS(100, error("ConnectBlock() : inputs missing/spent"),
-                    REJECT_INVALID, "bad-txns-inputs-missingorspent");
-
+            if (!view.HaveInputs(tx)) {
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-missingorspent");
+            }
             // Sapling: are the sapling spends' requirements met in tx(valid anchors/nullifiers)?
             if (!view.HaveShieldedRequirements(tx))
                 return state.DoS(100, error("%s: spends requirements not met", __func__),
@@ -3383,6 +3382,8 @@ bool AcceptBlock(const CBlock& block, CValidationState& state, CBlockIndex** ppi
 bool ProcessNewBlock(CValidationState& state, CNode* pfrom, const std::shared_ptr<const CBlock> pblock, CDiskBlockPos* dbp, bool* fAccepted)
 {
     AssertLockNotHeld(cs_main);
+
+    LogPrintf("---> MYDEBUG: inside ProcessNewBlock\n");
 
     // Preliminary checks
     int64_t nStartTime = GetTimeMillis();
