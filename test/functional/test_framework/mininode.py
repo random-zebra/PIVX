@@ -498,7 +498,8 @@ class P2PDataStore(P2PInterface):
 
         reject_reason = [reject_reason] if reject_reason else []
         with node.assert_debug_log(reject_reason):
-            self.send_message(msg_block(blocks[-1]))
+            for b in blocks:
+                self.send_message(msg_block(block=b))
 
             if expect_disconnect:
                 self.wait_for_disconnect()
