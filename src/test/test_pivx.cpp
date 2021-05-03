@@ -148,9 +148,9 @@ TestChainSetup::TestChainSetup(int blockCount)
 // Create a new block with just given transactions, coinbase paying to
 // scriptPubKey, and try to add it to the current chain.
 //
-CBlock TestChainSetup::CreateAndProcessBlock(const std::vector<CMutableTransaction>& txns, const CScript& scriptPubKey)
+CBlock TestChainSetup::CreateAndProcessBlock(const std::vector<CMutableTransaction>& txns, const CScript& scriptPubKey, bool fMineMempool)
 {
-    CBlock block = CreateBlock(txns, scriptPubKey);
+    CBlock block = CreateBlock(txns, scriptPubKey, fMineMempool);
     CValidationState state;
     if (!ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr) || !state.IsValid()) {
         throw std::runtime_error(FormatStateMessage(state));
@@ -164,14 +164,16 @@ CBlock TestChainSetup::CreateAndProcessBlock(const std::vector<CMutableTransacti
     return CreateAndProcessBlock(txns, scriptPubKey);
 }
 
-CBlock TestChainSetup::CreateBlock(const std::vector<CMutableTransaction>& txns, const CScript& scriptPubKey)
+CBlock TestChainSetup::CreateBlock(const std::vector<CMutableTransaction>& txns, const CScript& scriptPubKey, bool fMineMempool)
 {
     std::unique_ptr<CBlockTemplate> pblocktemplate = BlockAssembler(
             Params(), DEFAULT_PRINTPRIORITY).CreateNewBlock(scriptPubKey, nullptr, false);
     std::shared_ptr<CBlock> pblock = std::make_shared<CBlock>(pblocktemplate->block);
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:
-    pblock->vtx.resize(1);
+    if (!fMineMempool) {
+        pblock->vtx.resize(1);
+    }
     for (const CMutableTransaction& tx : txns) {
         pblock->vtx.push_back(MakeTransactionRef(tx));
     }

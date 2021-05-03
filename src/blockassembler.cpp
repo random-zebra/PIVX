@@ -452,6 +452,7 @@ void BlockAssembler::appendSaplingTreeRoot()
 {
     // Update header
     pblock->hashFinalSaplingRoot = CalculateSaplingTreeRoot(pblock, nHeight, chainparams);
+    std::cout << "sap-root " << nHeight << ": " << pblock->hashFinalSaplingRoot.ToString() << std::endl;
 }
 
 uint256 CalculateSaplingTreeRoot(CBlock* pblock, int nHeight, const CChainParams& chainparams)
