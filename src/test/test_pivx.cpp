@@ -152,7 +152,9 @@ CBlock TestChainSetup::CreateAndProcessBlock(const std::vector<CMutableTransacti
 {
     CBlock block = CreateBlock(txns, scriptPubKey);
     CValidationState state;
-    ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr);
+    if (!ProcessNewBlock(state, nullptr, std::make_shared<const CBlock>(block), nullptr) || !state.IsValid()) {
+        throw std::runtime_error(FormatStateMessage(state));
+    }
     return block;
 }
 
@@ -173,12 +175,15 @@ CBlock TestChainSetup::CreateBlock(const std::vector<CMutableTransaction>& txns,
     for (const CMutableTransaction& tx : txns)
         pblock->vtx.push_back(MakeTransactionRef(tx));
 
+    const CBlockIndex* pindexPrev = WITH_LOCK(cs_main, return chainActive.Tip());
+    pblock->nTime = pindexPrev->GetMedianTimePast() + 60;
+
     // IncrementExtraNonce creates a valid coinbase and merkleRoot
     unsigned int extraNonce = 0;
-    {
-        LOCK(cs_main);
-        IncrementExtraNonce(pblock, chainActive.Tip(), extraNonce);
-    }
+    IncrementExtraNonce(pblock, pindexPrev, extraNonce);
+
+    // Reset sapling root
+    pblock->hashFinalSaplingRoot = CalculateSaplingTreeRoot(pblock.get(), pindexPrev->nHeight + 1, Params());
 
     while (!CheckProofOfWork(pblock->GetHash(), pblock->nBits)) ++pblock->nNonce;
     return *pblock;

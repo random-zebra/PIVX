@@ -2289,7 +2289,6 @@ static bool ActivateBestChainStep(CValidationState& state, CBlockIndex* pindexMo
                     // The block violates a consensus rule.
                     if (!state.CorruptionPossible())
                         InvalidChainFound(vpindexToConnect.back());
-                    state = CValidationState();
                     fInvalidFound = true;
                     fContinue = false;
                     break;
