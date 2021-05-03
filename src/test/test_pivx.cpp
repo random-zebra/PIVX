@@ -172,18 +172,25 @@ CBlock TestChainSetup::CreateBlock(const std::vector<CMutableTransaction>& txns,
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:
     pblock->vtx.resize(1);
-    for (const CMutableTransaction& tx : txns)
+    for (const CMutableTransaction& tx : txns) {
         pblock->vtx.push_back(MakeTransactionRef(tx));
+    }
 
     const CBlockIndex* pindexPrev = WITH_LOCK(cs_main, return chainActive.Tip());
+    const int nHeight = pindexPrev->nHeight + 1;
     pblock->nTime = pindexPrev->GetMedianTimePast() + 60;
+
+    // Replace coinbase output amount (could have included fee in CreateNewBlock)
+    CMutableTransaction txCoinbase(*pblock->vtx[0]);
+    txCoinbase.vout[0].nValue = GetBlockValue(nHeight);
+    pblock->vtx[0] = MakeTransactionRef(txCoinbase);
 
     // IncrementExtraNonce creates a valid coinbase and merkleRoot
     unsigned int extraNonce = 0;
     IncrementExtraNonce(pblock, pindexPrev, extraNonce);
 
-    // Reset sapling root
-    pblock->hashFinalSaplingRoot = CalculateSaplingTreeRoot(pblock.get(), pindexPrev->nHeight + 1, Params());
+    // Re-compute sapling root
+    pblock->hashFinalSaplingRoot = CalculateSaplingTreeRoot(pblock.get(), nHeight, Params());
 
     while (!CheckProofOfWork(pblock->GetHash(), pblock->nBits)) ++pblock->nNonce;
     return *pblock;
