@@ -51,6 +51,8 @@ struct TestingSetup: public BasicTestingSetup {
     CScheduler scheduler;
     ECCVerifyHandle globalVerifyHandle;
 
+    bool ChangeChain(const std::string& newchain);
+
     TestingSetup();
     ~TestingSetup();
 };

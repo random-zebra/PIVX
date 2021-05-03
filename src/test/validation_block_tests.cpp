@@ -14,9 +14,11 @@
 #include "validation.h"
 #include "validationinterface.h"
 
-struct RegtestingSetup : public TestingSetup {
-    RegtestingSetup() : TestingSetup() {
-        SelectParams(CBaseChainParams::REGTEST);
+struct RegtestingSetup : public TestingSetup
+{
+    RegtestingSetup() : TestingSetup()
+    {
+        BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
     }
 };
 

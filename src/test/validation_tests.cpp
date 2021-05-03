@@ -131,7 +131,7 @@ void test_simple_sapling_invalidity(CMutableTransaction& tx)
 BOOST_AUTO_TEST_CASE(test_simple_shielded_invalid)
 {
     // Switch to regtest parameters so we can activate Sapling
-    SelectParams(CBaseChainParams::REGTEST);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
 
     CMutableTransaction mtx;
     mtx.nVersion = CTransaction::TxVersion::SAPLING;
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(test_simple_shielded_invalid)
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 
     // Switch back to mainnet parameters as originally selected in test fixture
-    SelectParams(CBaseChainParams::MAIN);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

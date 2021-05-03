@@ -110,9 +110,22 @@ TestingSetup::~TestingSetup()
         fs::remove_all(pathTemp);
 }
 
+bool TestingSetup::ChangeChain(const std::string& newchain)
+{
+    SelectParams(newchain);
+    // Since the new chain might have a different genesis hash, we need to update the block index.
+    UnloadBlockIndex();
+    pcoinsTip->SetBestBlock(UINT256_ZERO);
+    if (LoadGenesisBlock()) {
+        CValidationState state;
+        return ActivateBestChain(state);
+    }
+    return false;
+}
+
 TestChainSetup::TestChainSetup(int blockCount)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
 
     // if blockCount is over PoS start, delay it to 100 blocks after.
     if (blockCount > Params().GetConsensus().vUpgrades[Consensus::UPGRADE_POS].nActivationHeight) {

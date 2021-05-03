@@ -122,7 +122,7 @@ static bool CheckP2CSScript(const CScript& scriptSig, const CScript& scriptPubKe
 
 BOOST_AUTO_TEST_CASE(coldstake_script)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
     CScript scriptP2CS;
     CKey stakerKey, ownerKey;
 

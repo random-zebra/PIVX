@@ -54,7 +54,6 @@ BOOST_FIXTURE_TEST_SUITE(sapling_rpc_wallet_tests, WalletTestingSetup)
 
 BOOST_AUTO_TEST_CASE(rpc_wallet_sapling_validateaddress)
 {
-    SelectParams(CBaseChainParams::MAIN);
     UniValue retValue;
 
     // Check number of args
@@ -85,7 +84,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_sapling_validateaddress)
 
 BOOST_AUTO_TEST_CASE(rpc_wallet_getbalance)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::TESTNET));
 
     {
         LOCK(pwalletMain->cs_wallet);
@@ -111,10 +110,12 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_getbalance)
     BOOST_CHECK_THROW(CallRPC("listreceivedbyshieldaddress yBYhwgzufrZ6F5VVuK9nEChENArq934mqC 0"), std::runtime_error);
     // don't have the spending key
     BOOST_CHECK_THROW(CallRPC("listreceivedbyshieldaddress ptestsapling1nrn6exksuqtpld9gu6fwdz4hwg54h2x37gutdds89pfyg6mtjf63km45a8eare5qla45cj75vs8 1"), std::runtime_error);
+
+    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
-BOOST_AUTO_TEST_CASE(rpc_wallet_sapling_importkey_paymentaddress) {
-    SelectParams(CBaseChainParams::MAIN);
+BOOST_AUTO_TEST_CASE(rpc_wallet_sapling_importkey_paymentaddress)
+{
     {
         LOCK(pwalletMain->cs_wallet);
         pwalletMain->SetMinVersion(FEATURE_SAPLING);
@@ -226,7 +227,8 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_sapling_importexport)
 }
 
 // Check if address is of given type and spendable from our wallet.
-void CheckHaveAddr(const libzcash::PaymentAddress& addr) {
+void CheckHaveAddr(const libzcash::PaymentAddress& addr)
+{
 
     BOOST_CHECK(IsValidPaymentAddress(addr));
     auto addr_of_type = boost::get<libzcash::SaplingPaymentAddress>(&addr);
@@ -234,7 +236,8 @@ void CheckHaveAddr(const libzcash::PaymentAddress& addr) {
     BOOST_CHECK(pwalletMain->HaveSpendingKeyForPaymentAddress(*addr_of_type));
 }
 
-BOOST_AUTO_TEST_CASE(rpc_wallet_getnewshieldaddress) {
+BOOST_AUTO_TEST_CASE(rpc_wallet_getnewshieldaddress)
+{
     UniValue addr;
     {
         LOCK(pwalletMain->cs_wallet);
@@ -251,7 +254,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_getnewshieldaddress) {
 
 BOOST_AUTO_TEST_CASE(rpc_shieldsendmany_parameters)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::TESTNET));
 
     {
         LOCK(pwalletMain->cs_wallet);
@@ -311,15 +314,21 @@ BOOST_AUTO_TEST_CASE(rpc_shieldsendmany_parameters)
     std::string zaddr1 = KeyIO::EncodePaymentAddress(pa);
     BOOST_CHECK_THROW(CallRPC(std::string("shieldsendmany yBYhwgzufrZ6F5VVuK9nEChENArq934mqC ")
                               + "[{\"address\":\"" + zaddr1 + "\", \"amount\":123.456}]"), std::runtime_error);
+
+    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
 // TODO: test private methods
-BOOST_AUTO_TEST_CASE(saplingOperationTests) {
-    RegtestActivateSapling();
+BOOST_AUTO_TEST_CASE(saplingOperationTests)
+{
+    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     auto consensusParams = Params().GetConsensus();
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    pwalletMain->SetupSPKM(false);
+    {
+        LOCK2(cs_main, pwalletMain->cs_wallet);
+        pwalletMain->SetupSPKM(false);
+    }
 
     UniValue retValue;
 
@@ -388,17 +397,21 @@ BOOST_AUTO_TEST_CASE(saplingOperationTests) {
         const std::string& errStr = res.getError();
         BOOST_CHECK(errStr.find("too big") != std::string::npos);
     }
-    RegtestDeactivateSapling();
+
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
 
 BOOST_AUTO_TEST_CASE(rpc_shieldsendmany_taddr_to_sapling)
 {
-    SelectParams(CBaseChainParams::REGTEST);
-    RegtestActivateSapling();
+    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    pwalletMain->SetupSPKM(false);
+    {
+        LOCK2(cs_main, pwalletMain->cs_wallet);
+        pwalletMain->SetupSPKM(false);
+    }
 
     UniValue retValue;
 
@@ -479,7 +492,8 @@ BOOST_AUTO_TEST_CASE(rpc_shieldsendmany_taddr_to_sapling)
     mapBlockIndex.erase(blockHash);
 
     // Revert to default
-    RegtestDeactivateSapling();
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
 BOOST_AUTO_TEST_CASE(rpc_wallet_encrypted_wallet_sapzkeys)
@@ -546,7 +560,7 @@ BOOST_AUTO_TEST_CASE(rpc_wallet_encrypted_wallet_sapzkeys)
 
 BOOST_AUTO_TEST_CASE(rpc_listshieldunspent_parameters)
 {
-    SelectParams(CBaseChainParams::TESTNET);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::TESTNET));
 
     {
         LOCK(pwalletMain->cs_wallet);
@@ -593,6 +607,8 @@ BOOST_AUTO_TEST_CASE(rpc_listshieldunspent_parameters)
 
     // duplicate address error
     BOOST_CHECK_THROW(CallRPC("listshieldunspent 1 999 false [\"" + myzaddr + "\", \"" + myzaddr + "\"]"), std::runtime_error);
+
+    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

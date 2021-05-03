@@ -60,7 +60,7 @@ SaplingOperation createOperationAndBuildTx(std::vector<SendManyRecipient> recipi
 // Test double spend notes in the mempool and in blocks.
 BOOST_AUTO_TEST_CASE(test_in_block_and_mempool_notes_double_spend)
 {
-    SelectParams(CBaseChainParams::REGTEST);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
     int SAPLING_ACTIVATION_HEIGHT = 99;
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, SAPLING_ACTIVATION_HEIGHT);
     setupWallet();
@@ -150,6 +150,9 @@ BOOST_AUTO_TEST_CASE(test_in_block_and_mempool_notes_double_spend)
         BOOST_CHECK(chainActive.Tip()->GetBlockHash() != pblock->GetHash());
         BOOST_ASSERT_MSG(chainActive.Tip()->nHeight, 115);
     }
+
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
