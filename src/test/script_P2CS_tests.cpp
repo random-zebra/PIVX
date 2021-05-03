@@ -57,8 +57,8 @@ BOOST_AUTO_TEST_CASE(extract_cold_staking_destination_keys)
 
 static CScript GetNewP2CS(CKey& stakerKey, CKey& ownerKey)
 {
-    stakerKey = DecodeSecret("91yo52JPHDVUG3jXWLKGyzEdjn1a9nbnurLdmQEf2UzbgzkTc2c");
-    ownerKey = DecodeSecret("92KgNFNfmVVJRQuzssETc7NhwufGuHsLvPQxW9Nwmxs7PB4ByWB");
+    stakerKey = DecodeSecret("YNdsth3BsW53DYmCiR12SofWSAt2utXQUSGoin3PekVQCMbzfS7E");
+    ownerKey = DecodeSecret("YUo8oW3y8cUQdQxQxCdnUJ4Ww5H7nHBEMwD2bNDpBbuLM59t4rvd");
     return GetScriptForStakeDelegation(stakerKey.GetPubKey().GetID(),
                                        ownerKey.GetPubKey().GetID());
 }
@@ -122,7 +122,6 @@ static bool CheckP2CSScript(const CScript& scriptSig, const CScript& scriptPubKe
 
 BOOST_AUTO_TEST_CASE(coldstake_script)
 {
-    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
     CScript scriptP2CS;
     CKey stakerKey, ownerKey;
 
@@ -148,7 +147,7 @@ BOOST_AUTO_TEST_CASE(coldstake_script)
     SignColdStake(tx, 0, scriptP2CS, stakerKey, true);
     BOOST_CHECK(CheckP2CSScript(tx.vin[0].scriptSig, scriptP2CS, tx, err));
 
-    const CKey& dummyKey = DecodeSecret("91t7cwPGevo885Uccg87nVjzUxKhXta9JprHM3R21PQkBFMFg2i");
+    const CKey& dummyKey = DecodeSecret("YNdsth3BsW53DYmCiR12SofWSAt2utXQUSGoin3PekVQCMbzfS7E");
     const CKeyID& dummyKeyID = dummyKey.GetPubKey().GetID();
     const CScript& dummyP2PKH = GetDummyP2PKH(dummyKeyID);
 

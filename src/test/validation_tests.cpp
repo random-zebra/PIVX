@@ -50,8 +50,10 @@ BOOST_AUTO_TEST_CASE(special_tx_validation_test)
     BOOST_CHECK(state.GetRejectReason().find("with invalid type"));
 }
 
-void test_simple_sapling_invalidity(CMutableTransaction& tx)
+BOOST_AUTO_TEST_CASE(test_simple_shielded_invalid)
 {
+    CMutableTransaction tx;
+    tx.nVersion = CTransaction::TxVersion::SAPLING;
     CAmount nDummyValueOut;
     {
         CMutableTransaction newTx(tx);
@@ -126,22 +128,6 @@ void test_simple_sapling_invalidity(CMutableTransaction& tx)
         BOOST_CHECK(!CheckTransaction(newTx, state, false));
         BOOST_CHECK(state.GetRejectReason() == "bad-txns-invalid-sapling");
     }
-}
-
-BOOST_AUTO_TEST_CASE(test_simple_shielded_invalid)
-{
-    // Switch to regtest parameters so we can activate Sapling
-    BOOST_CHECK(ChangeChain(CBaseChainParams::REGTEST));
-
-    CMutableTransaction mtx;
-    mtx.nVersion = CTransaction::TxVersion::SAPLING;
-
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
-    test_simple_sapling_invalidity(mtx);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_V5_0, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
-
-    // Switch back to mainnet parameters as originally selected in test fixture
-    BOOST_CHECK(ChangeChain(CBaseChainParams::MAIN));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
