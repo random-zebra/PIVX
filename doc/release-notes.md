@@ -44,6 +44,16 @@ Notable Changes
 
 (Developers: add your notes here as part of your pull requests whenever possible)
 
+Low-level RPC changes
+---------------------
+
+- The `listunspent` RPC now takes a `query_options` argument (see [PR 2317](https://github.com/PIVX-Project/PIVX/pull/2317)), which is a JSON object
+  containing one or more of the following members:
+  - `minimumAmount` - a number specifying the minimum value of each UTXO
+  - `maximumAmount` - a number specifying the maximum value of each UTXO
+  - `maximumCount` - a number specifying the minimum number of UTXOs
+  - `minimumSumAmount` - a number specifying the minimum sum value of all UTXOs
+
 
 #### Disable PoW mining RPC Commands
 
