@@ -221,11 +221,17 @@ bool InitLoadWallet()
             }
         }
 
-        CWallet * const pwallet = CWallet::CreateWalletFromFile(walletFile);
+        bool fFirstRun;
+        CWallet * const pwallet = CWallet::CreateWalletFromFile(walletFile, fFirstRun);
         if (!pwallet) {
             return false;
         }
         vpwallets.emplace_back(pwallet);
+
+        if (fFirstRun) {
+            // Initial backup
+            return AutoBackupWallet(walletFile, strWarning, strError);
+        }
     }
 
     return true;
