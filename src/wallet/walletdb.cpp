@@ -909,11 +909,11 @@ bool AutoBackupWallet(const std::string& strWalletFile, std::string& strBackupWa
 
     // Copy wallet file
     fs::path sourceFile = GetDataDir() / strWalletFile;
-    fs::path backupFile = backupsDir / (strWalletFile + FormatISO8601DateTimeForBackup(GetTime()));
+    fs::path backupFile = backupsDir / (strWalletFile + FormatISO8601DateTime(GetTime()));
     sourceFile.make_preferred();
     backupFile.make_preferred();
     if (fs::exists(backupFile)) {
-        strBackupWarning = _("Failed to create backup, file already exists! This could happen if you restarted wallet in less than 60 seconds. You can continue if you are ok with this.");
+        strBackupWarning = _("Failed to create backup, filename already exists!");
         LogPrintf("%s\n", strBackupWarning);
         return false;
     }
@@ -943,13 +943,6 @@ void MultiBackup(const CWallet& wallet, fs::path pathCustom, fs::path pathWithFi
         folder_set_t folderSet = buildBackupsMapSortedByLastWrite(wallet.GetDBHandle().GetName(), pathCustom);
         if (!cleanWalletBackups(folderSet, nThreshold, strBackupWarning)) {
             NotifyBacked(wallet, false, strBackupWarning);
-        }
-
-        // TODO: add seconds to avoid naming conflicts
-        for (const auto& entry : folderSet) {
-            if(entry.second == pathWithFile) {
-                pathWithFile += "(1)";
-            }
         }
     }
     AttemptBackupWallet(&wallet, pathSrc.string(), pathWithFile.string());
