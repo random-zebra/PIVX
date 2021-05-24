@@ -3177,54 +3177,24 @@ bool AcceptBlock(const CBlock& block, CValidationState& state, CBlockIndex** ppi
         const CTxIn& coinstake_in = coinstake.vin[0];
         const bool isZPOS = coinstake_in.IsZerocoinSpend();
 
-        // ZC started after PoS.
-        // Check for serial double spent on the same block, TODO: Move this to the proper method..
+        // Check for serials double spent on the same block
+        if (consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_ZC) &&
+                !consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V5_0) &&
+                !CheckInBlockDoubleSpentSerials(block, nHeight, state)) {
+            return false;
+        }
 
-        std::vector<CBigNum> inBlockSerials;
-        for (const auto& txIn : block.vtx) {
-            const CTransaction& tx = *txIn;
-            for (const CTxIn& in: tx.vin) {
-                if (consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_ZC)) {
-                    bool isPublicSpend = in.IsZerocoinPublicSpend();
-                    bool isPrivZerocoinSpend = in.IsZerocoinSpend();
-                    if (isPrivZerocoinSpend || isPublicSpend) {
-
-                        // Check enforcement
-                        if (!CheckPublicCoinSpendEnforced(pindex->nHeight, isPublicSpend)) {
-                            return false;
-                        }
-
-                        libzerocoin::CoinSpend spend;
-                        if (isPublicSpend) {
-                            libzerocoin::ZerocoinParams* params = consensus.Zerocoin_Params(false);
-                            PublicCoinSpend publicSpend(params);
-                            if (!ZPIVModule::ParseZerocoinPublicSpend(in, tx, state, publicSpend)) {
-                                return false;
-                            }
-                            spend = publicSpend;
-                        } else {
-                            spend = TxInToZerocoinSpend(in);
-                        }
-                        // Check for serials double spending in the same block
-                        if (std::find(inBlockSerials.begin(), inBlockSerials.end(), spend.getCoinSerialNumber()) !=
-                            inBlockSerials.end()) {
-                            return state.DoS(100, error("%s: serial double spent on the same block", __func__));
-                        }
-                        inBlockSerials.push_back(spend.getCoinSerialNumber());
-                    }
-                }
-                if (tx.IsCoinStake()) continue;
-                if (!isZPOS) {
-                    // Check if coinstake input is double spent inside the same block
+        // Check if coinstake input is double spent inside the same block
+        if (!isZPOS) {
+            for (const auto& tx : block.vtx) {
+                if (tx->IsCoinStake()) continue;
+                for (const CTxIn& in: tx->vin) {
                     if (coinstake_in.prevout == in.prevout)
                         // double spent coinstake input inside block
                         return error("%s: double spent coinstake input inside block", __func__);
                 }
-
             }
         }
-        inBlockSerials.clear();
-
 
         // Check whether is a fork or not
         if (isBlockFromFork) {

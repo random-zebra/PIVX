@@ -251,3 +251,34 @@ bool ContextualCheckZerocoinSpendNoSerialCheck(const CTransaction& tx, const lib
     return true;
 }
 
+bool CheckInBlockDoubleSpentSerials(const CBlock& block, int nHeight, CValidationState& state)
+{
+    libzerocoin::ZerocoinParams* params = Params().GetConsensus().Zerocoin_Params(false);
+    std::vector<CBigNum> inBlockSerials;
+    for (const auto tx : block.vtx) {
+        for (const CTxIn& in: tx->vin) {
+            bool isPublicSpend = in.IsZerocoinPublicSpend();
+            bool isPrivZerocoinSpend = !isPublicSpend && in.IsZerocoinSpend();
+            if (isPrivZerocoinSpend || isPublicSpend) {
+                libzerocoin::CoinSpend spend;
+                if (isPublicSpend) {
+                    PublicCoinSpend publicSpend(params);
+                    if (!ZPIVModule::ParseZerocoinPublicSpend(in, *tx, state, publicSpend)){
+                        return false;
+                    }
+                    spend = publicSpend;
+                } else {
+                    spend = TxInToZerocoinSpend(in);
+                }
+                // Check for serials double spending in the same block
+                if (std::find(inBlockSerials.begin(), inBlockSerials.end(), spend.getCoinSerialNumber()) !=
+                    inBlockSerials.end()) {
+                    return state.DoS(100, error("%s: serial double spent on the same block", __func__));
+                }
+                inBlockSerials.push_back(spend.getCoinSerialNumber());
+            }
+        }
+    }
+    return true;
+}
+
