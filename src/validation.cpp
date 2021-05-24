@@ -3119,6 +3119,62 @@ bool AcceptBlockHeader(const CBlock& block, CValidationState& state, CBlockIndex
 }
 
 /*
+ * Collect the sets of the inputs (either regular utxos or zerocoin serials) spent
+ * by in-block txes.
+ * Also, check that there are no in-block double spends.
+ */
+static bool CheckInBlockDoubleSpends(const CBlock& block, int nHeight, CValidationState& state,
+                                     std::unordered_set<COutPoint, SaltedOutpointHasher>& spent_outpoints,
+                                     std::set<CBigNum>& spent_serials)
+{
+    const Consensus::Params& consensus = Params().GetConsensus();
+    libzerocoin::ZerocoinParams* params = consensus.Zerocoin_Params(false);
+    const bool zpivActive = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_ZC);
+    const bool publicZpivActive = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_ZC_PUBLIC);
+    const bool v5Active = consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V5_0);
+
+    for (size_t i = 1; i < block.vtx.size(); i++) {
+        // skip coinbase
+        CTransactionRef tx = block.vtx[i];
+        for (const CTxIn& in: tx->vin) {
+            bool isPublicSpend = in.IsZerocoinPublicSpend();
+            if (isPublicSpend && (!publicZpivActive || v5Active)) {
+                return state.DoS(100, error("%s: public zerocoin spend at height %d", __func__, nHeight));
+            }
+            bool isPrivZerocoinSpend = !isPublicSpend && in.IsZerocoinSpend();
+            if (isPrivZerocoinSpend && (!zpivActive || publicZpivActive)) {
+                return state.DoS(100, error("%s: private zerocoin spend at height %d", __func__, nHeight));
+            }
+            if (isPrivZerocoinSpend || isPublicSpend) {
+                libzerocoin::CoinSpend spend;
+                if (isPublicSpend) {
+                    PublicCoinSpend publicSpend(params);
+                    if (!ZPIVModule::ParseZerocoinPublicSpend(in, *tx, state, publicSpend)){
+                        return false;
+                    }
+                    spend = publicSpend;
+                } else {
+                    spend = TxInToZerocoinSpend(in);
+                }
+                // Check for serials double spending in the same block
+                const CBigNum& s = spend.getCoinSerialNumber();
+                if (spent_serials.find(s) != spent_serials.end()) {
+                    return state.DoS(100, error("%s: serial double spent on the same block", __func__));
+                }
+                spent_serials.insert(s);
+            } else {
+                // regular utxo
+                if (spent_outpoints.find(in.prevout) != spent_outpoints.end()) {
+                    return state.DoS(100, error("%s: utxo double spent on the same block", __func__));
+                }
+                spent_outpoints.insert(in.prevout);
+            }
+        }
+    }
+    return true;
+}
+
+/*
  * Check whether an input is unspent on a forked chain (either PIV or ZPIV)
  * start from startIndex and go backwards on the forked chain up to the split
  */
@@ -3263,23 +3319,11 @@ bool AcceptBlock(const CBlock& block, CValidationState& state, CBlockIndex** ppi
         const CTxIn& coinstake_in = coinstake.vin[0];
         const bool isZPOS = coinstake_in.IsZerocoinSpend();
 
-        // Check for serials double spent on the same block
-        if (consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_ZC) &&
-                !consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_V5_0) &&
-                !CheckInBlockDoubleSpentSerials(block, nHeight, state)) {
+        // Collect spent_outpoints and check for in-block double spends
+        std::unordered_set<COutPoint, SaltedOutpointHasher> spent_outpoints;
+        std::set<CBigNum> spent_serials;
+        if (!CheckInBlockDoubleSpends(block, nHeight, state, spent_outpoints, spent_serials)) {
             return false;
-        }
-
-        // Check if coinstake input is double spent inside the same block
-        if (!isZPOS) {
-            for (const auto& tx : block.vtx) {
-                if (tx->IsCoinStake()) continue;
-                for (const CTxIn& in: tx->vin) {
-                    if (coinstake_in.prevout == in.prevout)
-                        // double spent coinstake input inside block
-                        return error("%s: double spent coinstake input inside block", __func__);
-                }
-            }
         }
 
         // If this is a fork, check if the stake input was spent
