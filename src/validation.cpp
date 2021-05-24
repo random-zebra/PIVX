@@ -3122,14 +3122,14 @@ bool AcceptBlockHeader(const CBlock& block, CValidationState& state, CBlockIndex
  * Check whether an input is unspent on a forked chain (either PIV or ZPIV)
  * start from startIndex and go backwards on the forked chain up to the split
  */
-static bool IsUnspentOnFork(const CTxIn& utxo, const CBlockIndex* startIndex, CValidationState& state)
+static bool IsUnspentOnFork(const CTxIn& utxo, const CBlockIndex* startIndex, CValidationState& state, const CBlockIndex*& pindexFork)
 {
     const bool isZPIV = utxo.IsZerocoinSpend();
     const Optional<CBigNum> utxo_serial = isZPIV ? Optional<CBigNum>(TxInToZerocoinSpend(utxo).getCoinSerialNumber()) : nullopt;
 
     // Go backwards on the forked chain up to the split
     int readBlock = 0;
-    const CBlockIndex* pindexFork = startIndex;
+    pindexFork = startIndex;
     for ( ; !chainActive.Contains(pindexFork); pindexFork = pindexFork->pprev) {
         // read block
         CBlock bl;
@@ -3171,6 +3171,39 @@ static bool IsUnspentOnFork(const CTxIn& utxo, const CBlockIndex* startIndex, CV
     }
 
     return true;
+}
+
+/*
+ * Check whether provided input was spent on the active chain
+ * start from startIndex and go upwards on the active chain till the tip
+ */
+static bool IsSpentOnActiveChain(const CTxIn& utxo, const CBlockIndex* startIndex)
+{
+    assert(chainActive.Contains(startIndex));
+    const int height_start = startIndex->nHeight;
+    const int height_end = chainActive.Height();
+
+    // Go upwards on the active chain till the tip
+    for (int height = height_start; height <= height_end; height++) {
+        // read block
+        const CBlockIndex* pindex = mapBlockIndex.at(chainActive[height]->GetBlockHash());
+        CBlock bl;
+        if (!ReadBlockFromDisk(bl, pindex)) {
+            return error("%s: block %s not on disk", __func__, pindex->GetBlockHash().GetHex());
+        }
+        // Loop through every tx of this block
+        for (const auto& tx : bl.vtx) {
+            // Loop through every input of this tx
+            for (const CTxIn& in: tx->vin) {
+                // check if the utxo is being spent
+                if (utxo.prevout == in.prevout)
+                    return true;
+            }
+        }
+    }
+
+    // utxo not spent on the active chain
+    return false;
 }
 
 bool AcceptBlock(const CBlock& block, CValidationState& state, CBlockIndex** ppindex, FlatFilePos* dbp)
@@ -3251,16 +3284,26 @@ bool AcceptBlock(const CBlock& block, CValidationState& state, CBlockIndex** ppi
 
         // If this is a fork, check if the stake input was spent
         // Start at the block we're adding on to
-        if (isBlockFromFork && !IsUnspentOnFork(coinstake_in, pindexPrev, state)) {
+        const CBlockIndex* pindexFork{nullptr};
+        if (isBlockFromFork && !IsUnspentOnFork(coinstake_in, pindexPrev, state, pindexFork)) {
             return false;
         }
 
         // If the stake is not a zPoS then let's check if the inputs were spent on the main chain
         if (!isZPOS) {
             const Coin& coin = pcoinsTip->AccessCoin(coinstake_in.prevout);
-            if (coin.IsSpent() && !isBlockFromFork) {
-                // No coins on the main chain
-                return error("%s: coin stake inputs not-available/already-spent on main chain, received height %d vs current %d", __func__, nHeight, chainActive.Height());
+            if (coin.IsSpent()) {
+                if (!isBlockFromFork) {
+                    // No coins on the main chain
+                    return error("%s: coin stake inputs not-available/already-spent on main chain, received height %d vs current %d", __func__, nHeight, chainActive.Height());
+                } else {
+                    // The coin was spent on the active chain.
+                    // Loop from the fork block up to the chain tip and check if it was spent after the fork.
+                    // If it was, accept the block. Otherwise reject the block, as the coin was either spent
+                    // before the fork block, or it was never created.
+                    if (!IsSpentOnActiveChain(coinstake_in, pindexFork))
+                        return error("%s: coin stake inputs not-available/already-spent on fork chain, received height %d vs current %d", __func__, nHeight, chainActive.Height());
+                }
             }
         } else {
             libzerocoin::CoinSpend spend = TxInToZerocoinSpend(coinstake_in);
