@@ -212,6 +212,8 @@ CBlockTreeDB* pblocktree = NULL;
 CZerocoinDB* zerocoinDB = NULL;
 CSporkDB* pSporkDB = NULL;
 
+std::unique_ptr<AccumulatorCache> accumulatorCache{nullptr};
+
 enum FlushStateMode {
     FLUSH_STATE_NONE,
     FLUSH_STATE_IF_NEEDED,
@@ -1417,7 +1419,7 @@ DisconnectResult DisconnectBlock(CBlock& block, const CBlockIndex* pindex, CCoin
     if (consensus.NetworkUpgradeActive(pindex->nHeight, Consensus::UPGRADE_ZC_V2) &&
             pindex->nHeight <= consensus.height_last_ZC_AccumCheckpoint) {
         // Legacy Zerocoin DB: If Accumulators Checkpoint is changed, remove changed checksums
-        DataBaseAccChecksum(pindex, false);
+        CacheAccChecksum(pindex, false);
     }
 
     return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
@@ -1776,11 +1778,12 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
 
     if (consensus.NetworkUpgradeActive(pindex->nHeight, Consensus::UPGRADE_ZC_V2) &&
             pindex->nHeight < consensus.height_last_ZC_AccumCheckpoint) {
-        // Legacy Zerocoin DB: If Accumulators Checkpoint is changed, database the checksums
-        DataBaseAccChecksum(pindex, true);
-    } else if (pindex->nHeight == consensus.height_last_ZC_AccumCheckpoint) {
-        // After last Checkpoint block, wipe the checksum database
-        zerocoinDB->WipeAccChecksums();
+        // Legacy Zerocoin DB: If Accumulators Checkpoint is changed, cache the checksums
+        CacheAccChecksum(pindex, true);
+    } else if (accumulatorCache && pindex->nHeight > consensus.height_last_ZC_AccumCheckpoint + 100) {
+        // 100 blocks After last Checkpoint block, wipe the checksum database and cache
+        accumulatorCache->Wipe();
+        accumulatorCache = nullptr;
     }
 
     // 100 blocks after the last invalid out, clean the map contents
@@ -1859,6 +1862,9 @@ bool static FlushStateToDisk(CValidationState& state, FlushStateMode mode)
                     return AbortNode(state, "Files to write to block index database");
                 }
             }
+            // Flush zerocoin accumulator checkpoints cache
+            if (accumulatorCache) accumulatorCache->Flush();
+
             nLastWrite = nNow;
         }
 

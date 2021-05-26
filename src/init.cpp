@@ -1525,6 +1525,7 @@ bool AppInitMain()
 
                 //PIVX specific: zerocoin and spork DB's
                 zerocoinDB = new CZerocoinDB(0, false, fReindex);
+                accumulatorCache = MakeUnique<AccumulatorCache>(zerocoinDB);
                 pSporkDB = new CSporkDB(0, false, false);
 
                 deterministicMNManager.reset();
