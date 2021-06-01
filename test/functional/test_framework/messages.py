@@ -1378,7 +1378,7 @@ class msg_witness_blocktxn(msg_blocktxn):
 
 # PIVX Classes
 class Masternode(object):
-    def __init__(self, idx, owner_addr, operator_addr, voting_addr, ipport, payout_addr, operator_key):
+    def __init__(self, idx, owner_addr, operator_addr, voting_addr, ipport, payout_addr, operator_key, voting_key):
         self.idx = idx
         self.owner = owner_addr
         self.operator = operator_addr
@@ -1386,6 +1386,7 @@ class Masternode(object):
         self.ipport = ipport
         self.payee = payout_addr
         self.operator_key = operator_key
+        self.voting_key = voting_key
         self.proTx = None
         self.collateral = None
 

@@ -608,7 +608,8 @@ def create_new_dmn(idx, controller, payout_addr, operator_addr_and_key):
     else:
         operator_addr = operator_addr_and_key[0]
         operator_key = operator_addr_and_key[1]
-    return messages.Masternode(idx, owner_addr, operator_addr, voting_addr, ipport, payout_addr, operator_key)
+        voting_key = operator_addr_and_key[2]
+    return messages.Masternode(idx, owner_addr, operator_addr, voting_addr, ipport, payout_addr, operator_key, voting_key)
 
 def spend_mn_collateral(spender, dmn):
     inputs = [dmn.collateral.to_json()]

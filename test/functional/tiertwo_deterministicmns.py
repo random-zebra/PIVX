@@ -143,7 +143,7 @@ class DIP3Test(PivxTestFramework):
         self.add_new_dmn(mns, "external")
         self.add_new_dmn(mns, "fund")
         for mn in mns:
-            self.nodes[mn.idx].initmasternode(mn.operator_key, "", True)
+            self.nodes[mn.idx].initmasternode(mn.operator_key, "", mn.voting_key)
             time.sleep(1)
         miner.generate(1)
         self.sync_blocks()
@@ -156,7 +156,8 @@ class DIP3Test(PivxTestFramework):
             add_and_key = []
             add_and_key.append(miner.getnewaddress("oper-%d-key" % idx))
             add_and_key.append(miner.dumpprivkey(add_and_key[0]))
-            self.nodes[idx].initmasternode(add_and_key[1], "", True)
+            add_and_key.append(miner.dumpprivkey(miner.getnewaddress("voting-%d-key" % idx)))
+            self.nodes[idx].initmasternode(add_and_key[1], "", add_and_key[2])
             op_keys.append(add_and_key)
             time.sleep(1)
 

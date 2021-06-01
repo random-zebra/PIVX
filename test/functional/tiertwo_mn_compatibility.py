@@ -116,13 +116,13 @@ class MasternodeCompatibilityTest(PivxTier2TestFramework):
 
         # Create another DMN, this time without funding the collateral.
         # ProTx references another transaction in the owner's wallet
-        self.proRegTx2, self.dmn2Privkey = self.setupDMN(
+        self.proRegTx2, self.dmn2Privkey, self.dmn2Votingkey = self.setupDMN(
             self.ownerOne,
             self.miner,
             self.remoteDMN2Pos,
             "internal"
         )
-        self.remoteDMN2.initmasternode(self.dmn2Privkey, "", True)
+        self.remoteDMN2.initmasternode(self.dmn2Privkey, "", self.dmn2Votingkey)
 
         # check list and status
         txHashSet.add(self.proRegTx2)
@@ -143,7 +143,7 @@ class MasternodeCompatibilityTest(PivxTier2TestFramework):
 
         # Now create a DMN, reusing the collateral output of a legacy MN
         self.log.info("Creating a DMN reusing the collateral of a legacy MN...")
-        self.proRegTx3, self.dmn3Privkey = self.setupDMN(
+        self.proRegTx3, self.dmn3Privkey, self.dmn3Votingkey = self.setupDMN(
             self.ownerOne,
             self.miner,
             self.remoteDMN3Pos,
@@ -153,7 +153,7 @@ class MasternodeCompatibilityTest(PivxTier2TestFramework):
         # The remote node is shutting down the pinging service
         self.send_3_pings()
 
-        self.remoteDMN3.initmasternode(self.dmn3Privkey, "", True)
+        self.remoteDMN3.initmasternode(self.dmn3Privkey, "", self.dmn3Votingkey)
 
         # The legacy masternode must no longer be in the list
         # and the DMN must have taken its place

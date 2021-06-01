@@ -1132,7 +1132,7 @@ class PivxTestFramework():
         self.stake_and_sync(self.nodes.index(miner), 1)
         assert_greater_than(self.nodes[mnRemotePos].getrawtransaction(proTxId, 1)["confirmations"], 0)
         assert proTxId in self.nodes[mnRemotePos].protx_list(False)
-        return proTxId, operatorKey
+        return proTxId, operatorKey, mnOwner.dumpprivkey(votingAdd)
 
     def setupMasternode(self,
                         mnOwner,
@@ -1450,7 +1450,7 @@ class PivxTier2TestFramework(PivxTestFramework):
             self.remoteTwoPos,
             self.mnTwoPrivkey)
         # setup deterministic masternode
-        self.proRegTx1, self.dmn1Privkey = self.setupDMN(
+        self.proRegTx1, self.dmn1Privkey, self.dmn1Votingkey = self.setupDMN(
             self.ownerOne,
             self.miner,
             self.remoteDMN1Pos,
@@ -1467,7 +1467,7 @@ class PivxTier2TestFramework(PivxTestFramework):
         remoteTwoPort = p2p_port(self.remoteTwoPos)
         self.remoteOne.initmasternode(self.mnOnePrivkey, "127.0.0.1:"+str(remoteOnePort))
         self.remoteTwo.initmasternode(self.mnTwoPrivkey, "127.0.0.1:"+str(remoteTwoPort))
-        self.remoteDMN1.initmasternode(self.dmn1Privkey, "", True)
+        self.remoteDMN1.initmasternode(self.dmn1Privkey, "", self.dmn1Votingkey)
 
         # wait until mnsync complete on all nodes
         self.stake(1)
