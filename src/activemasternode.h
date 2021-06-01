@@ -30,6 +30,9 @@ struct CActiveMasternodeInfo
     // Keys for the active Masternode
     CKeyID keyIDOperator;
     CKey keyOperator;
+    // !TODO: remove after transition to DMN
+    CKeyID keyIDVoting;
+    CKey keyVoting;
     // Initialized while registering Masternode
     uint256 proTxHash{UINT256_ZERO};
     CService service;
@@ -59,11 +62,11 @@ public:
 
     void Init();
     void Reset(masternode_state_t _state);
-    // Sets the Deterministic Masternode Operator's private/public key
-    OperationResult SetOperatorKey(const std::string& strMNOperatorPrivKey);
+    // Sets the Deterministic Masternode Operator's (and voting) private/public key
+    OperationResult SetKeys(const std::string& strMNOperatorPrivKey, const std::string& strMNVotingPrivKey);
     // If the active masternode is ready, and the keyID matches with the registered one,
     // return private key, keyID, and pointer to dmn.
-    OperationResult GetOperatorKey(CKey& key, CKeyID& keyID, CDeterministicMNCPtr& dmn) const;
+    OperationResult GetVotingKey(CKey& key, CKeyID& keyID, CDeterministicMNCPtr& dmn) const;
     void SetNullProTx() { info.proTxHash = UINT256_ZERO; }
 
     const CActiveMasternodeInfo* GetInfo() const { return &info; }

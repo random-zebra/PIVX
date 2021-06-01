@@ -399,7 +399,7 @@ static mnKeyList getDMNKeysForActiveMasternode(UniValue& resultsObj)
         throw JSONRPCError(RPC_MISC_ERROR, _("This is not a deterministic masternode. 'local' option disabled."));
 
     CKey dmnKey; CKeyID dmnKeyID; CDeterministicMNCPtr dmn;
-    auto res = activeMasternodeManager->GetOperatorKey(dmnKey, dmnKeyID, dmn);
+    auto res = activeMasternodeManager->GetVotingKey(dmnKey, dmnKeyID, dmn);
     if (!res) {
         resultsObj.push_back(packErrorRetStatus("local", res.getError()));
         return {};

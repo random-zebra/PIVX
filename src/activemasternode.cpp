@@ -52,7 +52,7 @@ std::string CActiveDeterministicMasternodeManager::GetStatus() const
     }
 }
 
-OperationResult CActiveDeterministicMasternodeManager::SetOperatorKey(const std::string& strMNOperatorPrivKey)
+OperationResult CActiveDeterministicMasternodeManager::SetKeys(const std::string& strMNOperatorPrivKey, const std::string& strMNVotingPrivKey)
 {
 
     LOCK(cs_main); // Lock cs_main so the node doesn't perform any action while we setup the Masternode
@@ -63,10 +63,16 @@ OperationResult CActiveDeterministicMasternodeManager::SetOperatorKey(const std:
     if (!CMessageSigner::GetKeysFromSecret(strMNOperatorPrivKey, info.keyOperator, info.keyIDOperator)) {
         return errorOut(_("Invalid mnoperatorprivatekey. Please see the documentation."));
     }
+    if (strMNVotingPrivKey.empty()) {
+        return errorOut("ERROR: Masternode voting priv key cannot be empty.");
+    }
+    if (!CMessageSigner::GetKeysFromSecret(strMNVotingPrivKey, info.keyVoting, info.keyIDVoting)) {
+        return errorOut(_("Invalid mnvotingprivatekey. Please see the documentation."));
+    }
     return OperationResult(true);
 }
 
-OperationResult CActiveDeterministicMasternodeManager::GetOperatorKey(CKey& key, CKeyID& keyID, CDeterministicMNCPtr& dmn) const
+OperationResult CActiveDeterministicMasternodeManager::GetVotingKey(CKey& key, CKeyID& keyID, CDeterministicMNCPtr& dmn) const
 {
     if (!IsReady()) {
         return errorOut("Active masternode not ready");
@@ -75,12 +81,12 @@ OperationResult CActiveDeterministicMasternodeManager::GetOperatorKey(CKey& key,
     if (!dmn) {
         return errorOut(strprintf("Active masternode %s not registered or PoSe banned", info.proTxHash.ToString()));
     }
-    if (info.keyIDOperator != dmn->pdmnState->keyIDOperator) {
+    if (info.keyIDVoting != dmn->pdmnState->keyIDVoting) {
         return errorOut("Active masternode operator key changed or revoked");
     }
     // return keys
-    key = info.keyOperator;
-    keyID = info.keyIDOperator;
+    key = info.keyVoting;
+    keyID = info.keyIDVoting;
     return OperationResult(true);
 }
 
@@ -462,7 +468,7 @@ bool GetActiveMasternodeKeys(CKey& key, CKeyID& keyID, CTxIn& vin)
     if (activeMasternodeManager != nullptr) {
         // deterministic mn
         CDeterministicMNCPtr dmn;
-        auto res = activeMasternodeManager->GetOperatorKey(key, keyID, dmn);
+        auto res = activeMasternodeManager->GetVotingKey(key, keyID, dmn);
         if (!res) {
             LogPrint(BCLog::MNBUDGET,"%s: %s\n", __func__, res.getError());
             return false;

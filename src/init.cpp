@@ -578,6 +578,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-masternodeaddr=<n>", strprintf(_("Set external address:port to get to this masternode (example: %s)"), "128.127.106.235:51472"));
     strUsage += HelpMessageOpt("-budgetvotemode=<mode>", _("Change automatic finalized budget voting behavior. mode=auto: Vote for only exact finalized budget match to my generated budget. (string, default: auto)"));
     strUsage += HelpMessageOpt("-mnoperatorprivatekey=<WIF>", _("Set the masternode operator private key. Only valid with -masternode=1. When set, the masternode acts as a deterministic masternode."));
+    strUsage += HelpMessageOpt("-mnvotingprivatekey=<WIF>", _("Set the masternode voting private key. Only valid with -masternode=1. This parameter is only temporary, and it will be removed in a future version."));
 
     strUsage += HelpMessageGroup(_("Node relay options:"));
     if (showDebug) {
@@ -1839,6 +1840,7 @@ bool AppInitMain()
 
     if (fMasterNode) {
         const std::string& mnoperatorkeyStr = gArgs.GetArg("-mnoperatorprivatekey", "");
+        const std::string& mnvotingkeyStr = gArgs.GetArg("-mnvotingprivatekey", "");
         const bool fDeterministic = !mnoperatorkeyStr.empty();
         LogPrintf("IS %sMASTERNODE\n", (fDeterministic ? "DETERMINISTIC " : ""));
 
@@ -1849,9 +1851,14 @@ bool AppInitMain()
                 LogPrintf("-- ERROR: %s\n", strError);
                 return UIError(strError);
             }
+            if (mnvotingkeyStr.empty()) {
+                const std::string strError = strprintf(_("%s not set. Parameter needed while in transition to DMN"), "-mnvotingprivatekey");
+                LogPrintf("-- ERROR: %s\n", strError);
+                return UIError(strError);
+            }
             // Create and register activeMasternodeManager
             activeMasternodeManager = new CActiveDeterministicMasternodeManager();
-            auto res = activeMasternodeManager->SetOperatorKey(mnoperatorkeyStr);
+            auto res = activeMasternodeManager->SetKeys(mnoperatorkeyStr, mnvotingkeyStr);
             if (!res) { return UIError(res.getError()); }
             RegisterValidationInterface(activeMasternodeManager);
             // Init active masternode

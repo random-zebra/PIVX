@@ -53,16 +53,51 @@ UniValue mnping(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue initdeterministicmasternode(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 3) {
+        throw std::runtime_error(
+                "initdeterministicmasternode \"operatorKey\" \"masternodeAddr\" \"votingKey\" \n"
+                "\nInitialize masternode on demand if it's not already initialized.\n"
+                "\nArguments:\n"
+                "1. operatorKey          (string, required) The masternode operator private key.\n"
+                "2. masternodeAddr       (string, required) The IP:Port of this masternode.\n"
+                "3. votingKey            (string, required) The masternode voting private key.\n"
+
+                "\nResult:\n"
+                " success                      (string) if the masternode initialization succeeded.\n"
+
+                "\nExamples:\n" +
+                HelpExampleCli("initdeterministicmasternode", "\"9247iC59poZmqBYt9iDh9wDam6v9S1rW5XekjLGyPnDhrDkP4AK\" \"187.24.32.124:51472\" \"9247iC59poZmqBYt9iDh9wDam6v9S1rW5XekjLGyPnDhrDkP4AK\"") +
+                HelpExampleRpc("initdeterministicmasternode", "\"9247iC59poZmqBYt9iDh9wDam6v9S1rW5XekjLGyPnDhrDkP4AK\" \"187.24.32.124:51472\" \"9247iC59poZmqBYt9iDh9wDam6v9S1rW5XekjLGyPnDhrDkP4AK\""));
+    }
+
+    const std::string& strOperatorPrivKey = request.params[0].get_str();
+    const std::string& strMasterNodeAddr = request.params[1].get_str();
+    const std::string& strVotingPrivKey = request.params[2].get_str();
+
+    if (!activeMasternodeManager) {
+        activeMasternodeManager = new CActiveDeterministicMasternodeManager();
+        RegisterValidationInterface(activeMasternodeManager);
+    }
+    auto res = activeMasternodeManager->SetKeys(strOperatorPrivKey, strVotingPrivKey);
+    if (!res) throw std::runtime_error(res.getError());
+    activeMasternodeManager->Init();
+    if (activeMasternodeManager->GetState() == CActiveDeterministicMasternodeManager::MASTERNODE_ERROR) {
+        throw std::runtime_error(activeMasternodeManager->GetStatus());
+    }
+    return "success";
+}
+
 UniValue initmasternode(const JSONRPCRequest& request)
 {
-    if (request.fHelp || (request.params.size() < 2|| request.params.size() > 3)) {
+    if (request.fHelp || request.params.size() != 2) {
         throw std::runtime_error(
-                "initmasternode \"masternodePrivKey\" \"masternodeAddr\" ( deterministic )\n"
+                "initmasternode \"masternodePrivKey\" \"masternodeAddr\"\n"
                 "\nInitialize masternode on demand if it's not already initialized.\n"
                 "\nArguments:\n"
                 "1. masternodePrivKey          (string, required) The masternode private key.\n"
                 "2. masternodeAddr             (string, required) The IP:Port of this masternode.\n"
-                "3. deterministic              (boolean, optional, default=false) Init as DMN.\n"
 
                 "\nResult:\n"
                 " success                      (string) if the masternode initialization succeeded.\n"
@@ -71,24 +106,9 @@ UniValue initmasternode(const JSONRPCRequest& request)
                 HelpExampleCli("initmasternode", "\"9247iC59poZmqBYt9iDh9wDam6v9S1rW5XekjLGyPnDhrDkP4AK\" \"187.24.32.124:51472\"") +
                 HelpExampleRpc("initmasternode", "\"9247iC59poZmqBYt9iDh9wDam6v9S1rW5XekjLGyPnDhrDkP4AK\" \"187.24.32.124:51472\""));
     }
-
-    std::string _strMasterNodePrivKey = request.params[0].get_str();
-    std::string _strMasterNodeAddr = request.params[1].get_str();
-    bool fDeterministic = request.params.size() > 2 && request.params[2].get_bool();
-    if (fDeterministic) {
-        if (!activeMasternodeManager) {
-            activeMasternodeManager = new CActiveDeterministicMasternodeManager();
-            RegisterValidationInterface(activeMasternodeManager);
-        }
-        auto res = activeMasternodeManager->SetOperatorKey(_strMasterNodePrivKey);
-        if (!res) throw std::runtime_error(res.getError());
-        activeMasternodeManager->Init();
-        if (activeMasternodeManager->GetState() == CActiveDeterministicMasternodeManager::MASTERNODE_ERROR) {
-            throw std::runtime_error(activeMasternodeManager->GetStatus());
-        }
-        return "success";
-    }
     // legacy
+    const std::string& _strMasterNodePrivKey = request.params[0].get_str();
+    const std::string& _strMasterNodeAddr = request.params[1].get_str();
     auto res = initMasternode(_strMasterNodePrivKey, _strMasterNodeAddr, false);
     if (!res) throw std::runtime_error(res.getError());
     return "success";
