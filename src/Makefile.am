@@ -198,6 +198,8 @@ BITCOIN_CORE_H = \
   evo/evonotificationinterface.h \
   evo/providertx.h \
   evo/specialtx.h \
+  llmq/quorums_commitment.h \
+  llmq/quorums_utils.h \
   pairresult.h \
   addressbook.h \
   wallet/db.h \
@@ -352,6 +354,8 @@ libbitcoin_server_a_SOURCES = \
   evo/evonotificationinterface.cpp \
   evo/providertx.cpp \
   evo/specialtx.cpp \
+  llmq/quorums_commitment.cpp \
+  llmq/quorums_utils.cpp \
   httprpc.cpp \
   httpserver.cpp \
   init.cpp \
