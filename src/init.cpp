@@ -29,6 +29,7 @@
 #include "httpserver.h"
 #include "httprpc.h"
 #include "invalid.h"
+#include "llmq/quorums_init.h"
 #include "key.h"
 #include "masternode-payments.h"
 #include "masternodeconfig.h"
@@ -300,6 +301,7 @@ void PrepareShutdown()
         zerocoinDB = NULL;
         delete pSporkDB;
         pSporkDB = NULL;
+        llmq::DestroyLLMQSystem();
         deterministicMNManager.reset();
         evoDb.reset();
     }
@@ -1606,6 +1608,9 @@ bool AppInitMain()
 
                 // The on-disk coinsdb is now in a good state, create the cache
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
+
+                // Initialize LLMQ system
+                llmq::InitLLMQSystem(*evoDb);
 
                 // !TODO: after enabling reindex-chainstate
                 // if (!fReindex && !fReindexChainState) {
