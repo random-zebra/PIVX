@@ -273,6 +273,7 @@ public:
     enum TxType: int16_t {
         NORMAL = 0,
         PROREG = 1,
+        LLMQCOMM = 5,
     };
 
     static const int16_t CURRENT_VERSION = TxVersion::LEGACY;

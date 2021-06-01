@@ -50,7 +50,6 @@ public:
     void ToJson(UniValue& obj) const;
 
     bool Verify(const std::vector<CDeterministicMNCPtr>& members, bool checkSigs) const;
-    bool VerifyNull() const;
     bool VerifySizes(const Consensus::LLMQParams& params) const;
 
     ADD_SERIALIZE_METHODS
@@ -69,6 +68,32 @@ public:
         READWRITE(membersSig);
     }
 };
+
+class LLMQCommPL
+{
+public:
+    static const uint16_t CURRENT_VERSION = 1;
+
+public:
+    uint16_t nVersion{CURRENT_VERSION};
+    uint32_t nHeight{(uint32_t)-1};
+    CFinalCommitment commitment;
+
+public:
+    ADD_SERIALIZE_METHODS
+
+    template<typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(nVersion);
+        READWRITE(nHeight);
+        READWRITE(commitment);
+    }
+
+    void ToJson(UniValue& obj) const;
+};
+
+bool CheckLLMQCommitment(const CTransaction& tx, const CBlockIndex* pindexPrev, CValidationState& state);
 
 } // namespace llmq
 
