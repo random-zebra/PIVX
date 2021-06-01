@@ -4,6 +4,7 @@
 
 #include "llmq/quorums_utils.h"
 
+#include "bls/bls.h"
 #include "chainparams.h"
 #include "random.h"
 #include "spork.h"

@@ -6,14 +6,12 @@
 #ifndef PIVX_QUORUMS_COMMITMENT_H
 #define PIVX_QUORUMS_COMMITMENT_H
 
-
+#include "bls/bls.h"
 #include "consensus/params.h"
 #include "evo/deterministicmns.h"
 
 #include <univalue.h>
 
-class CBLSPublicKey;
-class CBLSSignature;
 
 namespace llmq
 {

@@ -5,7 +5,6 @@
 
 #include "llmq/quorums_commitment.h"
 
-// #include "bls/bls.h" !TODO
 #include "chainparams.h"
 #include "evo/specialtx.h"
 #include "llmq/quorums_utils.h"
@@ -82,13 +81,13 @@ bool CFinalCommitment::Verify(const std::vector<CDeterministicMNCPtr>& members, 
         return false;
     }
 
-    int validmembers = CountValidMembers();
-    if (validmembers < params.minSize) {
-        return errorFinalCommitment("validMembers count (%d < %d)", validmembers, params.minSize);
+    int count_vmembers = CountValidMembers();
+    if (count_vmembers < params.minSize) {
+        return errorFinalCommitment("validMembers count (%d < %d)", count_vmembers, params.minSize);
     }
-    int signers = CountSigners();
-    if (signers < params.minSize) {
-        return errorFinalCommitment("signers count (%d < %d)", signers, params.minSize);
+    int count_signers = CountSigners();
+    if (count_signers < params.minSize) {
+        return errorFinalCommitment("signers count (%d < %d)", count_signers, params.minSize);
     }
 
     if (!quorumPublicKey.IsValid()) {
@@ -122,7 +121,8 @@ bool CFinalCommitment::Verify(const std::vector<CDeterministicMNCPtr>& members, 
             if (!signers[i]) {
                 continue;
             }
-            memberPubKeys.emplace_back(members[i]->pdmnState->pubKeyOperator.Get());
+            // !TODO: after switching to BLS for operator key
+            //memberPubKeys.emplace_back(members[i]->pdmnState->pubKeyOperator.Get());
         }
 
         if (!membersSig.VerifySecureAggregated(memberPubKeys, commitmentHash)) {
