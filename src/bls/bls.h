@@ -237,7 +237,6 @@ public:
     using CBLSWrapper::operator!=;
 
     CBLSId() {}
-    CBLSId(const int64_t n);
     CBLSId(const uint256& nHash);
 };
 
