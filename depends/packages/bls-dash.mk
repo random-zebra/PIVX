@@ -1,4 +1,4 @@
-package=chia_bls
+package=bls-dash
 $(package)_version=1.0.0
 # It's actually from https://github.com/Chia-Network/bls-signatures, but we have so many patches atm that it's forked
 $(package)_download_path=https://github.com/PIVX-Project/bls-signatures/archive
