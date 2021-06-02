@@ -10,6 +10,7 @@
 #include "random.h"
 #include "util/system.h"
 
+void InitBLSTests();
 void CleanupBLSTests();
 void CleanupBLSDkgTests();
 
@@ -19,6 +20,7 @@ int main(int argc, char** argv)
     ECCVerifyHandle globalVerifyHandle;
     RandomInit();
     BLSInit();
+    InitBLSTests();
     SetupEnvironment();
     g_logger->m_print_to_file = false; // don't want to write to debug.log file
 
