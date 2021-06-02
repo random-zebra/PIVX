@@ -11,10 +11,12 @@
 #include "uint256.h"
 #include "utilstrencodings.h"
 
+#undef ERROR // chia BLS uses relic, which defines ERROR, which in turn causes win32/win64 builds to print many warnings
 #include <chiabls/bls.hpp>
 #include <chiabls/privatekey.hpp>
 #include <chiabls/publickey.hpp>
 #include <chiabls/signature.hpp>
+#undef DOUBLE
 
 #include <array>
 #include <mutex>
@@ -43,8 +45,8 @@ protected:
 
     inline constexpr size_t GetSerSize() const { return SerSize; }
 
-    virtual bool InternalSetBuf(const void* buf, size_t size) = 0;
-    virtual bool InternalGetBuf(void* buf, size_t size) const = 0;
+    virtual bool InternalSetBuf(const void* buf) = 0;
+    virtual bool InternalGetBuf(void* buf) const = 0;
 
 public:
     static const size_t SerSize = _SerSize;
@@ -97,10 +99,15 @@ public:
 
     void SetBuf(const void* buf, size_t size)
     {
+        if (size != SerSize) {
+            Reset();
+            return;
+        }
+
         if (std::all_of((const char*)buf, (const char*)buf + size, [](char c) { return c == 0; })) {
             Reset();
         } else {
-            fValid = InternalSetBuf(buf, size);
+            fValid = InternalSetBuf(buf);
             if (!fValid) {
                 Reset();
             }
@@ -115,10 +122,12 @@ public:
 
     void GetBuf(void* buf, size_t size) const
     {
+        assert(size == SerSize);
+
         if (!fValid) {
             memset(buf, 0, size);
         } else {
-            bool ok = InternalGetBuf(buf, size);
+            bool ok = InternalGetBuf(buf);
             assert(ok);
         }
     }
@@ -148,8 +157,13 @@ public:
 
     bool SetHexStr(const std::string& str)
     {
+        if (!IsHex(str)) {
+            Reset();
+            return false;
+        }
         auto b = ParseHex(str);
         if (b.size() != SerSize) {
+            Reset();
             return false;
         }
         SetBuf(b);
@@ -212,8 +226,8 @@ public:
     static CBLSId FromHash(const uint256& hash);
 
 protected:
-    bool InternalSetBuf(const void* buf, size_t size);
-    bool InternalGetBuf(void* buf, size_t size) const;
+    bool InternalSetBuf(const void* buf);
+    bool InternalGetBuf(void* buf) const;
 };
 
 class CBLSSecretKey : public CBLSWrapper<bls::PrivateKey, BLS_CURVE_SECKEY_SIZE, CBLSSecretKey>
@@ -235,8 +249,8 @@ public:
     CBLSSignature Sign(const uint256& hash) const;
 
 protected:
-    bool InternalSetBuf(const void* buf, size_t size);
-    bool InternalGetBuf(void* buf, size_t size) const;
+    bool InternalSetBuf(const void* buf);
+    bool InternalGetBuf(void* buf) const;
 };
 
 class CBLSPublicKey : public CBLSWrapper<bls::PublicKey, BLS_CURVE_PUBKEY_SIZE, CBLSPublicKey>
@@ -256,8 +270,8 @@ public:
     bool DHKeyExchange(const CBLSSecretKey& sk, const CBLSPublicKey& pk);
 
 protected:
-    bool InternalSetBuf(const void* buf, size_t size);
-    bool InternalGetBuf(void* buf, size_t size) const;
+    bool InternalSetBuf(const void* buf);
+    bool InternalGetBuf(void* buf) const;
 };
 
 class CBLSSignature : public CBLSWrapper<bls::InsecureSignature, BLS_CURVE_SIG_SIZE, CBLSSignature>
@@ -267,6 +281,7 @@ class CBLSSignature : public CBLSWrapper<bls::InsecureSignature, BLS_CURVE_SIG_S
 public:
     using CBLSWrapper::operator==;
     using CBLSWrapper::operator!=;
+    using CBLSWrapper::CBLSWrapper;
 
     CBLSSignature() = default;
     CBLSSignature(const CBLSSignature&) = default;
@@ -286,8 +301,8 @@ public:
     bool Recover(const std::vector<CBLSSignature>& sigs, const std::vector<CBLSId>& ids);
 
 protected:
-    bool InternalSetBuf(const void* buf, size_t size);
-    bool InternalGetBuf(void* buf, size_t size) const;
+    bool InternalSetBuf(const void* buf);
+    bool InternalGetBuf(void* buf) const;
 };
 
 #ifndef BUILD_BITCOIN_INTERNAL
