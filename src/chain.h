@@ -307,6 +307,8 @@ public:
                 READWRITE(obj.nSaplingValue);
             }
         } else if (nSerVersion > DBI_OLD_SER_VERSION && ser_action.ForRead()) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-value"
             // Serialization with CLIENT_VERSION = 4009901
             std::map<libzerocoin::CoinDenomination, int64_t> mapZerocoinSupply;
             int64_t nMoneySupply = 0;
@@ -323,7 +325,10 @@ public:
                 SER_READ(obj, mapZerocoinSupply);
                 if (obj.nVersion < 7) READWRITE(obj.nAccumulatorCheckpoint);
             }
+#pragma clang diagnostic pop
         } else if (ser_action.ForRead()) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-value"
             // Serialization with CLIENT_VERSION = 4009900-
             int64_t nMint = 0;
             uint256 hashNext{};
@@ -360,6 +365,7 @@ public:
                 SER_READ(obj, mapZerocoinSupply);
                 SER_READ(obj, vMintDenominationsInBlock);
             }
+#pragma clang diagnostic pop
         }
     }
 
