@@ -82,53 +82,9 @@ public:
         return fValid;
     }
 
-    void SetBuf(const void* buf, size_t size)
-    {
-        if (size != SerSize) {
-            Reset();
-            return;
-        }
-
-        if (std::all_of((const char*)buf, (const char*)buf + size, [](char c) { return c == 0; })) {
-            Reset();
-        } else {
-            try {
-                impl = ImplType::FromBytes((const uint8_t*)buf);
-                fValid = true;
-            } catch (...) {
-                Reset();
-            }
-        }
-        cachedHash.SetNull();
-    }
-
     void Reset()
     {
         *((C*)this) = C();
-    }
-
-    void GetBuf(void* buf, size_t size) const
-    {
-        assert(size == SerSize);
-
-        if (!fValid) {
-            memset(buf, 0, size);
-        } else {
-            impl.Serialize(static_cast<uint8_t*>(buf));
-        }
-    }
-
-    template <typename T>
-    void SetBuf(const T& buf)
-    {
-        SetBuf(buf.data(), buf.size());
-    }
-
-    template <typename T>
-    void GetBuf(T& buf) const
-    {
-        buf.resize(GetSerSize());
-        GetBuf(buf.data(), buf.size());
     }
 
     const uint256& GetHash() const
@@ -150,7 +106,7 @@ public:
             Reset();
             return false;
         }
-        SetBuf(b);
+        SetByteVector(b);
         return IsValid();
     }
 
@@ -158,28 +114,24 @@ public:
     template <typename Stream>
     inline void Serialize(Stream& s) const
     {
-        char buf[SerSize] = {0};
-        GetBuf(buf, SerSize);
-        s.write((const char*)buf, SerSize);
+        s.write((const char*)ToByteVector().data(), SerSize);
     }
 
     template <typename Stream>
     inline void Unserialize(Stream& s, bool checkMalleable = true)
     {
-        char buf[SerSize];
-        s.read((char*)buf, SerSize);
-        SetBuf(buf, SerSize);
+        std::vector<uint8_t> vecBytes(SerSize, 0);
+        s.read((char*)vecBytes.data(), SerSize);
+        SetByteVector(vecBytes);
 
-        if (checkMalleable && !CheckMalleable(buf, SerSize)) {
+        if (checkMalleable && !CheckMalleable(vecBytes)) {
             throw std::ios_base::failure("malleable BLS object");
         }
     }
 
-    inline bool CheckMalleable(void* buf, size_t size) const
+    inline bool CheckMalleable(const std::vector<uint8_t>& vecBytes) const
     {
-        char buf2[SerSize];
-        GetBuf(buf2, SerSize);
-        if (memcmp(buf, buf2, SerSize)) {
+        if (memcmp(vecBytes.data(), ToByteVector().data(), SerSize)) {
             // TODO not sure if this is actually possible with the BLS libs. I'm assuming here that somewhere deep inside
             // these libs masking might happen, so that 2 different binary representations could result in the same object
             // representation
@@ -190,8 +142,7 @@ public:
 
     inline std::string ToString() const
     {
-        std::vector<unsigned char> buf;
-        GetBuf(buf);
+        std::vector<uint8_t> buf = ToByteVector();
         return HexStr(buf.begin(), buf.end());
     }
 };
@@ -298,7 +249,7 @@ class CBLSLazyWrapper
 private:
     mutable std::mutex mutex;
 
-    mutable char buf[BLSObject::SerSize];
+    mutable std::vector<uint8_t> vecBytes;
     mutable bool bufValid{false};
 
     mutable BLSObject obj;
@@ -307,9 +258,8 @@ private:
     mutable uint256 hash;
 
 public:
-    CBLSLazyWrapper()
+    CBLSLazyWrapper() : vecBytes(BLSObject::SerSize, 0)
     {
-        memset(buf, 0, sizeof(buf));
         // the all-zero buf is considered a valid buf, but the resulting object will return false for IsValid
         bufValid = true;
     }
@@ -324,9 +274,9 @@ public:
         std::unique_lock<std::mutex> l(r.mutex);
         bufValid = r.bufValid;
         if (r.bufValid) {
-            memcpy(buf, r.buf, sizeof(buf));
+            vecBytes = r.vecBytes;
         } else {
-            memset(buf, 0, sizeof(buf));
+            std::fill(vecBytes.begin(), vecBytes.end(), 0);
         }
         objInitialized = r.objInitialized;
         if (r.objInitialized) {
@@ -346,18 +296,18 @@ public:
             throw std::ios_base::failure("obj and buf not initialized");
         }
         if (!bufValid) {
-            obj.GetBuf(buf, sizeof(buf));
+            vecBytes = obj.ToByteVector();
             bufValid = true;
             hash.SetNull();
         }
-        s.write(buf, sizeof(buf));
+        s.write((const char*)vecBytes.data(), vecBytes.size());
     }
 
     template<typename Stream>
     inline void Unserialize(Stream& s)
     {
         std::unique_lock<std::mutex> l(mutex);
-        s.read(buf, sizeof(buf));
+        s.read((char*)vecBytes.data(), BLSObject::SerSize);
         bufValid = true;
         objInitialized = false;
         hash.SetNull();
@@ -380,8 +330,8 @@ public:
             return invalidObj;
         }
         if (!objInitialized) {
-            obj.SetBuf(buf, sizeof(buf));
-            if (!obj.CheckMalleable(buf, sizeof(buf))) {
+            obj.SetByteVector(vecBytes);
+            if (!obj.CheckMalleable(vecBytes)) {
                 bufValid = false;
                 objInitialized = false;
                 obj = invalidObj;
@@ -395,7 +345,7 @@ public:
     bool operator==(const CBLSLazyWrapper& r) const
     {
         if (bufValid && r.bufValid) {
-            return memcmp(buf, r.buf, sizeof(buf)) == 0;
+            return vecBytes == r.vecBytes;
         }
         if (objInitialized && r.objInitialized) {
             return obj == r.obj;
@@ -412,13 +362,13 @@ public:
     {
         std::unique_lock<std::mutex> l(mutex);
         if (!bufValid) {
-            obj.GetBuf(buf, sizeof(buf));
+            vecBytes = obj.ToByteVector();
             bufValid = true;
             hash.SetNull();
         }
         if (hash.IsNull()) {
             CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-            ss.write(buf, sizeof(buf));
+            ss.write((const char*)vecBytes.data(), vecBytes.size());
             hash = ss.GetHash();
         }
         return hash;
