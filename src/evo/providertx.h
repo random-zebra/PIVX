@@ -29,7 +29,7 @@ public:
     COutPoint collateralOutpoint{UINT256_ZERO, (uint32_t)-1};   // if hash is null, we refer to a ProRegTx output
     CService addr;
     CKeyID keyIDOwner;
-    CKeyID keyIDOperator;
+    CKeyID pubKeyOperator;
     CKeyID keyIDVoting;
     CScript scriptPayout;
     uint16_t nOperatorReward{0};
@@ -49,7 +49,7 @@ public:
         READWRITE(collateralOutpoint);
         READWRITE(addr);
         READWRITE(keyIDOwner);
-        READWRITE(keyIDOperator);
+        READWRITE(pubKeyOperator);
         READWRITE(keyIDVoting);
         READWRITE(scriptPayout);
         READWRITE(nOperatorReward);
@@ -114,7 +114,7 @@ public:
     uint16_t nVersion{CURRENT_VERSION}; // message version
     uint256 proTxHash;
     uint16_t nMode{0}; // only 0 supported for now
-    CKeyID keyIDOperator;
+    CKeyID pubKeyOperator;
     CKeyID keyIDVoting;
     CScript scriptPayout;
     uint256 inputsHash; // replay protection
@@ -129,7 +129,7 @@ public:
         READWRITE(nVersion);
         READWRITE(proTxHash);
         READWRITE(nMode);
-        READWRITE(keyIDOperator);
+        READWRITE(pubKeyOperator);
         READWRITE(keyIDVoting);
         READWRITE(scriptPayout);
         READWRITE(inputsHash);

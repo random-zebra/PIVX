@@ -1330,7 +1330,7 @@ class PivxTestFramework():
             mn2 = protxs[mn.proTx]
             collateral = mn.collateral.to_json()
             assert_equal(mn.owner, mn2["dmnstate"]["ownerAddress"])
-            assert_equal(mn.operator, mn2["dmnstate"]["operatorAddress"])
+            assert_equal(mn.operator, mn2["dmnstate"]["operatorPubKey"])
             assert_equal(mn.voting, mn2["dmnstate"]["votingAddress"])
             assert_equal(mn.ipport, mn2["dmnstate"]["service"])
             assert_equal(mn.payee, mn2["dmnstate"]["payoutAddress"])
@@ -1349,7 +1349,7 @@ class PivxTestFramework():
         assert_equal(pl["service"], dmn.ipport)
         assert_equal(pl["ownerAddress"], dmn.owner)
         assert_equal(pl["votingAddress"], dmn.voting)
-        assert_equal(pl["operatorAddress"], dmn.operator)
+        assert_equal(pl["operatorPubKey"], dmn.operator)
         assert_equal(pl["payoutAddress"], dmn.payee)
 
 
