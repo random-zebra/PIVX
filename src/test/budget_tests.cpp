@@ -4,7 +4,7 @@
 
 #include "test_pivx.h"
 
-#include "bls/bls.h"
+#include "bls/bls_wrapper.h"
 #include "budget/budgetmanager.h"
 #include "masternode-payments.h"
 #include "masternode-sync.h"
