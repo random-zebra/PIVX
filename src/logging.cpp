@@ -126,6 +126,7 @@ const CLogCategoryDesc LogCategories[] = {
         {BCLog::MNPING,         "mnping"},
         {BCLog::SAPLING,        "sapling"},
         {BCLog::SPORKS,         "sporks"},
+        {BCLog::LLMQ,           "llmq"},
         {BCLog::ALL,            "1"},
         {BCLog::ALL,            "all"},
 };
