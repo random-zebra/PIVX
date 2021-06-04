@@ -51,6 +51,7 @@ const char* FINALBUDGET = "fbs";
 const char* FINALBUDGETVOTE = "fbvote";
 const char* SYNCSTATUSCOUNT = "ssc";
 const char* GETMNLIST = "dseg";
+const char* QFCOMMITMENT = "qfcommit";
 }; // namespace NetMsgType
 
 static const char* ppszTypeName[] = {
@@ -70,7 +71,8 @@ static const char* ppszTypeName[] = {
     "mnq",
     NetMsgType::MNBROADCAST,
     NetMsgType::MNPING,
-    "dstx"  // deprecated
+    "dstx",  // deprecated
+    NetMsgType::QFCOMMITMENT,
 };
 
 /** All known message types. Keep this in the same order as the list of
@@ -117,7 +119,8 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::GETMNLIST,
     NetMsgType::BUDGETVOTESYNC,
     NetMsgType::GETSPORKS,
-    NetMsgType::SYNCSTATUSCOUNT
+    NetMsgType::SYNCSTATUSCOUNT,
+    NetMsgType::QFCOMMITMENT,
 };
 const static std::vector<std::string> allNetMessageTypesVec(allNetMessageTypes, allNetMessageTypes + ARRAYLEN(allNetMessageTypes));
 
