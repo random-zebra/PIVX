@@ -170,6 +170,8 @@ CBlock TestChainSetup::CreateAndProcessBlock(const std::vector<CMutableTransacti
 
 CBlock TestChainSetup::CreateBlock(const std::vector<CMutableTransaction>& txns, const CScript& scriptPubKey, bool fNoMempoolTx)
 {
+    SyncWithValidationInterfaceQueue();
+
     std::unique_ptr<CBlockTemplate> pblocktemplate = BlockAssembler(
             Params(), DEFAULT_PRINTPRIORITY).CreateNewBlock(scriptPubKey, nullptr, false, nullptr, fNoMempoolTx);
     std::shared_ptr<CBlock> pblock = std::make_shared<CBlock>(pblocktemplate->block);
