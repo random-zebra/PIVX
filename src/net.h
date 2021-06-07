@@ -11,6 +11,7 @@
 #include "addrman.h"
 #include "bloom.h"
 #include "compat.h"
+#include "consensus/params.h"
 #include "fs.h"
 #include "hash.h"
 #include "limitedmap.h"
@@ -255,6 +256,14 @@ public:
     bool RemoveAddedNode(const std::string& node);
     std::vector<AddedNodeInfo> GetAddedNodeInfo();
 
+    bool AddPendingMasternode(const uint256& proTxHash);
+    void SetMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash, const std::set<uint256>& proTxHashes);
+    bool HasMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash);
+    std::set<uint256> GetMasternodeQuorums(Consensus::LLMQType llmqType);
+    std::set<NodeId> GetMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash) const;
+    void RemoveMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash);
+    bool IsMasternodeQuorumNode(const CNode* pnode);
+
     size_t GetNodeCount(NumConnections num);
     void GetNodeStats(std::vector<CNodeStats>& vstats);
     bool DisconnectNode(const std::string& node);
@@ -355,6 +364,10 @@ private:
     std::list<CNode*> vNodesDisconnected;
     mutable RecursiveMutex cs_vNodes;
     std::atomic<NodeId> nLastNodeId;
+
+    mutable RecursiveMutex cs_vPendingMasternodes;
+    std::vector<uint256> vPendingMasternodes;
+    std::map<std::pair<Consensus::LLMQType, uint256>, std::set<uint256>> masternodeQuorumNodes; // protected by cs_vPendingMasternodes
 
     /** Services this instance offers */
     ServiceFlags nLocalServices{NODE_NONE};

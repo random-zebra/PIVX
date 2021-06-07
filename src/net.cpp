@@ -16,6 +16,7 @@
 #include "clientversion.h"
 #include "crypto/common.h"
 #include "crypto/sha256.h"
+#include "evo/deterministicmns.h"
 #include "guiinterface.h"
 #include "hash.h"
 #include "netbase.h"
@@ -2291,6 +2292,96 @@ bool CConnman::RemoveAddedNode(const std::string& strNode)
     for(std::vector<std::string>::iterator it = vAddedNodes.begin(); it != vAddedNodes.end(); ++it) {
         if (strNode == *it) {
             vAddedNodes.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CConnman::AddPendingMasternode(const uint256& proTxHash)
+{
+    LOCK(cs_vPendingMasternodes);
+    if (std::find(vPendingMasternodes.begin(), vPendingMasternodes.end(), proTxHash) != vPendingMasternodes.end()) {
+        return false;
+    }
+
+    vPendingMasternodes.emplace_back(proTxHash);
+    return true;
+}
+
+void CConnman::SetMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash, const std::set<uint256>& proTxHashes)
+{
+    LOCK(cs_vPendingMasternodes);
+    auto it = masternodeQuorumNodes.emplace(std::make_pair(llmqType, quorumHash), proTxHashes);
+    if (!it.second) {
+        it.first->second = proTxHashes;
+    }
+}
+
+void CConnman::RemoveMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash)
+{
+    LOCK(cs_vPendingMasternodes);
+    masternodeQuorumNodes.erase(std::make_pair(llmqType, quorumHash));
+}
+
+bool CConnman::HasMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash)
+{
+    LOCK(cs_vPendingMasternodes);
+    return masternodeQuorumNodes.count(std::make_pair(llmqType, quorumHash));
+}
+
+std::set<uint256> CConnman::GetMasternodeQuorums(Consensus::LLMQType llmqType)
+{
+    LOCK(cs_vPendingMasternodes);
+    std::set<uint256> result;
+    for (const auto& p : masternodeQuorumNodes) {
+        if (p.first.first != llmqType) {
+            continue;
+        }
+        result.emplace(p.first.second);
+    }
+    return result;
+}
+
+std::set<NodeId> CConnman::GetMasternodeQuorumNodes(Consensus::LLMQType llmqType, const uint256& quorumHash) const
+{
+    LOCK2(cs_vNodes, cs_vPendingMasternodes);
+    auto it = masternodeQuorumNodes.find(std::make_pair(llmqType, quorumHash));
+    if (it == masternodeQuorumNodes.end()) {
+        return {};
+    }
+    const auto& proRegTxHashes = it->second;
+
+    std::set<NodeId> nodes;
+    for (const auto pnode : vNodes) {
+        if (pnode->fDisconnect) {
+            continue;
+        }
+        auto dmn = deterministicMNManager->GetListAtChainTip().GetMNByService(pnode->addr);
+        if (dmn == nullptr) {
+            continue;
+        }
+        if (!proRegTxHashes.count(dmn->proTxHash)) {
+            continue;
+        }
+        nodes.emplace(pnode->GetId());
+    }
+    return nodes;
+}
+
+bool CConnman::IsMasternodeQuorumNode(const CNode* pnode)
+{
+    // outgoing connection to a known masternode address
+    if (pnode->fInbound) {
+        return false;
+    }
+    auto dmn = deterministicMNManager->GetListAtChainTip().GetMNByService(pnode->addr);
+    if (dmn == nullptr) {
+        return false;
+    }
+    LOCK(cs_vPendingMasternodes);
+    for (const auto& p : masternodeQuorumNodes) {
+        if (p.second.count(dmn->proTxHash)) {
             return true;
         }
     }
