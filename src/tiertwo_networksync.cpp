@@ -52,6 +52,15 @@ bool CMasternodeSync::MessageDispatcher(CNode* pfrom, std::string& strCommand, C
         return true;
     }
 
+    if (strCommand == NetMsgType::QCONTRIB
+        || strCommand == NetMsgType::QCOMPLAINT
+        || strCommand == NetMsgType::QJUSTIFICATION
+        || strCommand == NetMsgType::QPCOMMITMENT
+        || strCommand == NetMsgType::QWATCH) {
+        // !TODO
+        return false;
+    }
+
     if (strCommand == NetMsgType::GETMNLIST) {
         // Get Masternode list or specific entry
         CTxIn vin;

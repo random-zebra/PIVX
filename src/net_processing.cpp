@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2015-2020 The PIVX developers
+// Copyright (c) 2014-2021 The Dash Core developers
+// Copyright (c) 2015-2021 The PIVX developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,6 +11,7 @@
 #include "chain.h"
 #include "evo/deterministicmns.h"
 #include "llmq/quorums_blockprocessor.h"
+#include "llmq/quorums_init.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
 #include "masternode-sync.h"
@@ -802,6 +804,12 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         return mnodeman.mapSeenMasternodePing.count(inv.hash);
     case MSG_QUORUM_FINAL_COMMITMENT:
         return llmq::quorumBlockProcessor->HasMinableCommitment(inv.hash);
+    case MSG_QUORUM_CONTRIB:
+    case MSG_QUORUM_COMPLAINT:
+    case MSG_QUORUM_JUSTIFICATION:
+    case MSG_QUORUM_PREMATURE_COMMITMENT:
+        // !TODO: AlreadyHave
+        return false;
     }
     // Don't know what it is, just say we already got one
     return true;
@@ -864,6 +872,26 @@ bool static PushTierTwoGetDataRequest(const CInv& inv,
             connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::QFCOMMITMENT, o));
             return true;
         }
+    }
+
+    if (inv.type == MSG_QUORUM_CONTRIB) {
+        // !TODO
+        return false;
+    }
+
+    if (inv.type == MSG_QUORUM_COMPLAINT) {
+        // !TODO
+        return false;
+    }
+
+    if (inv.type == MSG_QUORUM_JUSTIFICATION) {
+        // !TODO
+        return false;
+    }
+
+    if (inv.type == MSG_QUORUM_PREMATURE_COMMITMENT) {
+        // !TODO
+        return false;
     }
 
     // !TODO: remove when transition to DMN is complete
@@ -1306,6 +1334,11 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             LOCK(cs_main);
             State(pfrom->GetId())->fCurrentlyConnected = true;
         }
+
+        if (gArgs.GetBoolArg("-watchquorums", llmq::DEFAULT_WATCH_QUORUMS)) {
+            g_connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::QWATCH));
+        }
+
         pfrom->fSuccessfullyConnected = true;
         LogPrintf("New outbound peer connected: version: %d, blocks=%d, peer=%d%s\n",
                   pfrom->nVersion.load(), pfrom->nStartingHeight, pfrom->GetId(),

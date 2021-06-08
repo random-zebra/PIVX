@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin developers
-// Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2016-2020 The PIVX developers
+// Copyright (c) 2014-2021 The Dash Core developers
+// Copyright (c) 2016-2021 The PIVX developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -282,6 +282,14 @@ extern const char* SYNCSTATUSCOUNT;
  * The qfcommit message is used to propagate LLMQ final commitments
  */
 extern const char* QFCOMMITMENT;
+/**
+ * Messages for LLMQ-DKG inter-quorum communication
+ */
+extern const char* QCONTRIB;
+extern const char* QCOMPLAINT;
+extern const char* QJUSTIFICATION;
+extern const char* QPCOMMITMENT;
+extern const char* QWATCH;
 }; // namespace NetMsgType
 
 /* Get a vector of all valid message types (see above) */
@@ -401,6 +409,10 @@ enum {
     MSG_MASTERNODE_PING,
     MSG_DSTX,               // Deprecated
     MSG_QUORUM_FINAL_COMMITMENT,
+    MSG_QUORUM_CONTRIB,
+    MSG_QUORUM_COMPLAINT,
+    MSG_QUORUM_JUSTIFICATION,
+    MSG_QUORUM_PREMATURE_COMMITMENT,
 };
 
 #endif // BITCOIN_PROTOCOL_H

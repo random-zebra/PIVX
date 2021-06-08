@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
-// Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2017-2020 The PIVX developers
+// Copyright (c) 2014-2021 The Dash Core developers
+// Copyright (c) 2017-2021 The PIVX developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -52,6 +52,11 @@ const char* FINALBUDGETVOTE = "fbvote";
 const char* SYNCSTATUSCOUNT = "ssc";
 const char* GETMNLIST = "dseg";
 const char* QFCOMMITMENT = "qfcommit";
+const char* QCONTRIB = "qcontrib";
+const char* QCOMPLAINT = "qcomplaint";
+const char* QJUSTIFICATION = "qjustify";
+const char* QPCOMMITMENT = "qpcommit";
+const char* QWATCH = "qwatch";
 }; // namespace NetMsgType
 
 static const char* ppszTypeName[] = {
@@ -73,6 +78,11 @@ static const char* ppszTypeName[] = {
     NetMsgType::MNPING,
     "dstx",  // deprecated
     NetMsgType::QFCOMMITMENT,
+    NetMsgType::QCONTRIB,
+    NetMsgType::QCOMPLAINT,
+    NetMsgType::QJUSTIFICATION,
+    NetMsgType::QPCOMMITMENT,
+    NetMsgType::QWATCH,
 };
 
 /** All known message types. Keep this in the same order as the list of
@@ -121,6 +131,11 @@ const static std::string allNetMessageTypes[] = {
     NetMsgType::GETSPORKS,
     NetMsgType::SYNCSTATUSCOUNT,
     NetMsgType::QFCOMMITMENT,
+    NetMsgType::QCONTRIB,
+    NetMsgType::QCOMPLAINT,
+    NetMsgType::QJUSTIFICATION,
+    NetMsgType::QPCOMMITMENT,
+    NetMsgType::QWATCH,
 };
 const static std::vector<std::string> allNetMessageTypesVec(allNetMessageTypes, allNetMessageTypes + ARRAYLEN(allNetMessageTypes));
 
