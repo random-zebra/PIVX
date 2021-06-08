@@ -2357,12 +2357,14 @@ std::set<NodeId> CConnman::GetMasternodeQuorumNodes(Consensus::LLMQType llmqType
         if (pnode->fDisconnect) {
             continue;
         }
-        auto dmn = deterministicMNManager->GetListAtChainTip().GetMNByService(pnode->addr);
-        if (dmn == nullptr) {
-            continue;
-        }
-        if (!proRegTxHashes.count(dmn->proTxHash)) {
-            continue;
+        if (!pnode->qwatch) {
+            auto dmn = deterministicMNManager->GetListAtChainTip().GetMNByService(pnode->addr);
+            if (dmn == nullptr) {
+                continue;
+            }
+            if (!proRegTxHashes.count(dmn->proTxHash)) {
+                continue;
+            }
         }
         nodes.emplace(pnode->GetId());
     }
