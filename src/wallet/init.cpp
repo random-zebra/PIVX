@@ -209,9 +209,15 @@ bool InitLoadWallet()
     }
 
     for (const std::string& walletFile : gArgs.GetArgs("-wallet")) {
-        // automatic backups
+        // create/load wallet
+        CWallet * const pwallet = CWallet::CreateWalletFromFile(walletFile);
+        if (!pwallet) {
+            return false;
+        }
+
+        // automatic backup
         std::string strWarning, strError;
-        if(!AutoBackupWallet(walletFile, strWarning, strError)) {
+        if (!AutoBackupWallet(*pwallet, strWarning, strError)) {
             if (!strWarning.empty()) {
                 UIWarning(strprintf("%s: %s", walletFile, strWarning));
             }
@@ -220,17 +226,8 @@ bool InitLoadWallet()
             }
         }
 
-        bool fFirstRun;
-        CWallet * const pwallet = CWallet::CreateWalletFromFile(walletFile, fFirstRun);
-        if (!pwallet) {
-            return false;
-        }
+        // add to wallets in use
         vpwallets.emplace_back(pwallet);
-
-        if (fFirstRun) {
-            // Initial backup
-            return AutoBackupWallet(walletFile, strWarning, strError);
-        }
     }
 
     return true;
