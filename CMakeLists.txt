@@ -163,6 +163,8 @@ file(GLOB ZRUST_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/rust/include/*.h)
 file(GLOB SAPLING_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/sapling/*.h)
 file(GLOB IMMER_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/immer/*.h)
 file(GLOB EVO_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/evo/*.h)
+file(GLOB BLS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/bls/*.h)
+file(GLOB LLMQ_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/llmq/*.h)
 
 source_group("BitcoinHeaders" FILES
         ${HEADERS}
@@ -178,6 +180,8 @@ source_group("BitcoinHeaders" FILES
         ${SAPLING_HEADERS}
         ${IMMER_HEADERS}
         ${EVO_HEADERS}
+        ${BLS_HEADERS}
+        ${LLMQ_HEADERS}
         ./src/support/cleanse.h
         )
 
