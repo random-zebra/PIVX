@@ -86,7 +86,7 @@ bool CBLSWorker::GenerateContributions(int quorumThreshold, const BLSIdVector& i
     std::list<std::future<bool> > futures;
     size_t batchSize = 8;
 
-    for (size_t i = 0; i < quorumThreshold; i += batchSize) {
+    for (size_t i = 0; i < (size_t)quorumThreshold; i += batchSize) {
         size_t start = i;
         size_t count = std::min(batchSize, quorumThreshold - start);
         auto f = [&, start, count](int threadId) {
@@ -133,10 +133,10 @@ struct Aggregator {
     typedef T ElementType;
 
     size_t batchSize{16};
-    std::shared_ptr<std::vector<const T*> > inputVec;
-
-    bool parallel;
     ctpl::thread_pool& workerPool;
+    bool parallel;
+
+    std::shared_ptr<std::vector<const T*> > inputVec;
 
     std::mutex m;
     // items in the queue are all intermediate aggregation results of finished batches.
@@ -144,11 +144,11 @@ struct Aggregator {
     boost::lockfree::queue<T*> aggQueue;
     std::atomic<size_t> aggQueueSize{0};
 
-    // keeps track of currently queued/in-progress batches. If it reaches 0, we are done
-    std::atomic<size_t> waitCount{0};
-
     typedef std::function<void(const T& agg)> DoneCallback;
     DoneCallback doneCallback;
+
+    // keeps track of currently queued/in-progress batches. If it reaches 0, we are done
+    std::atomic<size_t> waitCount{0};
 
     // TP can either be a pointer or a reference
     template <typename TP>
@@ -338,14 +338,15 @@ struct VectorAggregator {
     typedef std::shared_ptr<VectorType> VectorPtrType;
     typedef std::vector<VectorPtrType> VectorVectorType;
     typedef std::function<void(const VectorPtrType& agg)> DoneCallback;
-    DoneCallback doneCallback;
 
     const VectorVectorType& vecs;
+    bool parallel;
     size_t start;
     size_t count;
-    bool parallel;
+
     ctpl::thread_pool& workerPool;
 
+    DoneCallback doneCallback;
     std::atomic<size_t> doneCount;
 
     VectorPtrType result;
