@@ -143,6 +143,7 @@ TIERTWO_SCRIPTS = [
     'tiertwo_governance_sync_basic.py',
     'tiertwo_masternode_activation.py',
     'tiertwo_masternode_ping.py',
+    'tiertwo_governance_reorg.py',
 ]
 
 SAPLING_SCRIPTS = [
