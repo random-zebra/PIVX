@@ -60,12 +60,12 @@ v5.2.0 Change log
 ### Consensus
 - #2258 [Script] Fix "split P2CS" vulnerability (random-zebra)
 - #2428 [Consensus] Introduce 5.2 nuparams and use them to guard new P2CS rules (random-zebra)
-- #2431 [Consensus] Bump active protocol version to 70922
-- #2435 [Backport] Bump default block version to 10 (no enforcement)
+- #2431 [Consensus] Bump active protocol version to 70922 (random-zebra)
+- #2435 [Backport] Bump default block version to 10 (no enforcement) (random-zebra)
 
 ### Tier Two Network (Masternodes / Budget)
 - #2395 [budget] partially fixing a race condition that could cause a good peer to be banned (furszy)
-- #2437 [Backport] Add tiertwo_governance_reorg functional test
+- #2437 [Backport] Add tiertwo_governance_reorg functional test (random-zebra)
 
 ### Build system:
 - #2350 [build] depends macOS: point --sysroot to SDK (furszy)
@@ -86,6 +86,7 @@ Thanks to everyone who directly contributed to this release:
 - ken2812221
 - Kittywhiskers Van Gogh
 - random-zebra
+- PicklesRcool
 - Sjors Provoost
 - Volodia
 
